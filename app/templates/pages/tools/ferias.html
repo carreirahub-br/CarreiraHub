@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% from "components/icons.html" import svg %}
+
+{% block content %}
+<section class="mx-auto max-w-shell px-4 py-12 lg:px-6">
+  <nav class="text-sm text-muted" aria-label="Trilha">
+    <a class="text-brand hover:underline" href="/ferramentas">Ferramentas</a>
+    <span aria-hidden="true"> / </span>
+    <span class="text-navy">Calculadora de férias</span>
+  </nav>
+
+  <h1 class="mt-4 text-3xl font-extrabold tracking-tight">Quanto vou receber de férias?</h1>
+  <p class="mt-4 max-w-2xl text-base leading-7 text-muted">Estime o valor das férias com o 1/3 constitucional, o abono pecuniário (venda de até 1/3 dos dias) e uma projeção do desconto de INSS. O resultado é educativo.</p>
+
+  {% if error %}
+  <div class="mt-6 rounded-xl border border-slate-200 bg-canvas px-4 py-3" role="alert">
+    <p class="text-sm leading-6 text-red-700">{{ error }}</p>
+  </div>
+  {% endif %}
+
+  <div class="mt-8 grid gap-6 md:grid-cols-2">
+    <form class="rounded-card border border-slate-200 bg-white p-6 shadow-card" method="post" action="/ferramentas/ferias">
+      <h2 class="text-lg font-semibold">Dados das férias</h2>
+
+      <div class="mt-4">
+        <label class="block text-sm font-medium" for="salario_bruto">Salário bruto mensal</label>
+        <input class="input mt-2" id="salario_bruto" name="salario_bruto" type="number" step="0.01" min="0" inputmode="decimal" value="{{ form.salario_bruto }}" placeholder="Ex.: 3500.00">
+        <p class="mt-1 text-xs text-muted">Valor da remuneração mensal. Use ponto para os centavos.</p>
+      </div>
+
+      <div class="mt-4">
+        <label class="block text-sm font-medium" for="media_adicionais">Média mensal de adicionais e horas extras (opcional)</label>
+        <input class="input mt-2" id="media_adicionais" name="media_adicionais" type="number" step="0.01" min="0" inputmode="decimal" value="{{ form.media_adicionais }}" placeholder="Ex.: 300.00">
+        <p class="mt-1 text-xs text-muted">Media dos últimos 12 meses, se você recebe comissões ou horas extras.</p>
+      </div>
+
+      <div class="mt-4">
+        <label class="block text-sm font-medium" for="dias_gozados">Dias de férias de descanso</label>
+        <input class="input mt-2" id="dias_gozados" name="dias_gozados" type="number" min="1" max="30" step="1" inputmode="numeric" value="{{ form.dias_gozados }}">
+        <p class="mt-1 text-xs text-muted">Máximo de 30 dias. Se vender 10 dias, informe 20 aqui.</p>
+      </div>
+
+      <label class="mt-5 flex items-center gap-3 text-sm font-medium" for="vender_abono">
+        <input class="h-4 w-4 rounded border-slate-300 text-brand" id="vender_abono" name="vender_abono" type="checkbox" value="1" {% if form.vender_abono %}checked{% endif %}>
+        Quero vender dias de férias (abono pecuniário)
+      </label>
+
+      <div class="mt-4">
+        <label class="block text-sm font-medium" for="dias_abono">Dias que deseja vender</label>
+        <input class="input mt-2" id="dias_abono" name="dias_abono" type="number" min="0" max="10" step="1" inputmode="numeric" value="{{ form.dias_abono }}">
+        <p class="mt-1 text-xs text-muted">Limite de 1/3 do período: até 10 dias.</p>
+      </div>
+
+      <button class="btn-primary mt-6 w-full" type="submit">Calcular férias {{ svg("arrow", "h-4 w-4") }}</button>
+    </form>
+
+    <div class="flex flex-col gap-6">
+      {% if result %}
+      <div class="rounded-card border border-slate-200 bg-white p-6 shadow-card">
+        <h2 class="text-lg font-semibold">Resultado estimado</h2>
+        <dl class="mt-4">
+          {% for item in result.items %}
+          <div class="border-b border-slate-100 py-3">
+            <div class="flex items-start justify-between gap-4">
+              <dt class="text-sm leading-6 text-muted">{{ item.label }}</dt>
+              <dd class="text-sm font-semibold {{ 'text-red-700' if item.value < 0 else 'text-navy' }}">{{ item.value_text }}</dd>
+            </div>
+            {% if item.hint %}
+            <p class="mt-1 text-xs text-muted">{{ item.hint }}</p>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </dl>
+        <div class="mt-4 flex items-center justify-between gap-4 rounded-xl bg-navy px-4 py-4 text-white">
+          <p class="text-sm font-medium text-white/75">Valor líquido estimado</p>
+          <p class="text-lg font-extrabold">{{ result.liquido_text }}</p>
+        </div>
+        <p class="mt-3 text-xs leading-6 text-muted">Subtotal bruto {{ result.subtotal_text }} menos INSS estimado de {{ result.inss_text }}.</p>
+      </div>
+
+      <div class="rounded-card border border-slate-200 bg-white p-6 shadow-card">
+        <h2 class="text-base font-semibold">Atenção</h2>
+        <ul class="mt-3 flex flex-col gap-3">
+          {% for nota in result.notas %}
+          <li class="flex items-start gap-2 text-sm leading-6 text-muted">
+            <span class="text-brand">{{ svg("check", "mt-0.5 h-4 w-4") }}</span>
+            <span>{{ nota }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% else %}
+      <div class="rounded-card border border-slate-200 bg-white p-6 shadow-card" aria-labelledby="como-titulo">
+        <h2 id="como-titulo" class="text-lg font-semibold">Como o cálculo funciona</h2>
+        <ul class="mt-3 flex flex-col gap-3">
+          {% set itens = [
+            "Diária = base mensal ÷ 30",
+            "Férias = diária × dias de descanso",
+            "1/3 constitucional sobre a base de 30 dias (Súmula 328 do TST)",
+            "Abono pecuniário = diária × dias vendidos",
+            "INSS estimado com a tabela progressiva de 2025",
+          ] %}
+          {% for texto in itens %}
+          <li class="flex items-start gap-2 text-sm leading-6 text-muted">
+            <span class="text-brand">{{ svg("check", "mt-0.5 h-4 w-4") }}</span>
+            <span>{{ texto }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+
+      <div class="rounded-xl border border-slate-200 bg-canvas px-4 py-4">
+        <p class="text-xs leading-6 text-muted">
+          Valores estimados em caso simples. O IRRF não está incluído e convenções coletivas ou acordos individuais
+          podem alterar o resultado. Não substitui a orientação de um contador ou profissional de RH.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

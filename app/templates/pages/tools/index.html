@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% from "components/icons.html" import svg %}
+
+{% block content %}
+<section class="relative overflow-hidden">
+  <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(8,124,245,0.08),transparent_42%)]"></div>
+  <div class="mx-auto max-w-shell px-4 py-12 lg:px-6">
+    <p class="section-kicker">Ferramentas gratuitas</p>
+    <h1 class="mt-4 max-w-2xl text-3xl font-extrabold tracking-tight">Ferramentas de carreira</h1>
+    <p class="mt-4 max-w-2xl text-base leading-7 text-muted">Calculadoras rápidas para estimar valores trabalhistas e se preparar para a vida profissional. Simples, gratuitas e sem cadastro.</p>
+  </div>
+</section>
+
+<section class="py-12" aria-labelledby="disponiveis-titulo">
+  <div class="mx-auto max-w-shell px-4 lg:px-6">
+    <h2 id="disponiveis-titulo" class="text-2xl font-bold tracking-tight">Disponíveis agora</h2>
+    <p class="mt-2 text-sm text-muted">Escolha uma calculadora abaixo para começar.</p>
+    <div class="mt-6 grid gap-4 sm:grid-cols-2">
+      {% for tool in tools %}
+        {% include "components/tool_card.html" %}
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="bg-canvas py-12" aria-labelledby="embreve-titulo">
+  <div class="mx-auto max-w-shell px-4 lg:px-6">
+    <div class="rounded-card border border-slate-200 bg-white p-6 shadow-card">
+      <h2 id="embreve-titulo" class="text-2xl font-bold tracking-tight">Em desenvolvimento</h2>
+      <p class="mt-2 max-w-2xl text-sm leading-6 text-muted">Estas ferramentas estão sendo preparadas e serão publicadas nesta mesma área.</p>
+      <ul class="mt-6 grid gap-4 sm:grid-cols-2">
+        {% for name, description in upcoming %}
+        <li class="flex gap-3 rounded-xl border border-slate-200 bg-canvas px-4 py-4">
+          <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent-50 text-navy">
+            {{ svg("cog", "h-5 w-5") }}
+          </span>
+          <div>
+            <p class="text-sm font-semibold">{{ name }}</p>
+            <p class="mt-1 text-xs leading-6 text-muted">{{ description }}</p>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</section>
+{% endblock %}

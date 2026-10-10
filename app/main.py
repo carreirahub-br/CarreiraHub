@@ -17,6 +17,7 @@ from app.modules.notifications.router import router as alerts_router
 from app.modules.pages.router import router as pages_router
 from app.modules.resumes.router import router as resumes_router
 from app.modules.seo.router import router as seo_router
+from app.modules.tools.router import router as tools_router
 
 settings = get_settings()
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -35,6 +36,7 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 app.include_router(home_router)
 app.include_router(jobs_router)
 app.include_router(alerts_router)
+app.include_router(tools_router)
 app.include_router(pages_router)
 app.include_router(resumes_router)
 app.include_router(content_router)
