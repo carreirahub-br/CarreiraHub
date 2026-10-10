@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% from "components/icons.html" import svg %}
+{% from "components/tabela_referencia.html" import tabela_referencia %}
+
+{% block content %}
+<section class="mx-auto max-w-shell px-4 py-12 lg:px-6">
+  <nav class="text-sm text-muted" aria-label="Trilha">
+    <a class="text-brand hover:underline" href="/ferramentas">Ferramentas</a>
+    <span aria-hidden="true"> / </span>
+    <span class="text-navy">Calculadora de imposto de renda</span>
+  </nav>
+
+  <h1 class="mt-4 text-3xl font-extrabold tracking-tight">Quanto de imposto de renda vou pagar?</h1>
+  <p class="mt-4 max-w-2xl text-base leading-7 text-muted">Calcule o IRRF do mês considerando a tabela de 2026, as deduções com dependentes e a redução da Lei 15.270/2025, que zera o imposto até salários de R$ 5.000.</p>
+
+  {% if error %}
+  <div class="mt-6 rounded-xl border border-slate-200 bg-canvas px-4 py-3" role="alert">
+    <p class="text-sm leading-6 text-red-700">{{ error }}</p>
+  </div>
+  {% endif %}
+
+  <div class="mt-8 grid gap-6 md:grid-cols-2">
+    <form class="rounded-card border border-slate-200 bg-white p-6 shadow-card" method="post" action="/ferramentas/imposto-de-renda">
+      <h2 class="text-lg font-semibold">Dados do salário</h2>
+
+      <div class="mt-4">
+        <label class="block text-sm font-medium" for="salario_bruto">Salário bruto mensal</label>
+        <input class="input mt-2" id="salario_bruto" name="salario_bruto" type="number" step="0.01" min="0" inputmode="decimal" value="{{ form.salario_bruto }}" placeholder="Ex.: 3500.00">
+        <p class="mt-1 text-xs text-muted">Remuneração mensal do mês.</p>
+      </div>
+
+      <div class="mt-4">
+        <label class="block text-sm font-medium" for="dependentes">Dependentes</label>
+        <input class="input mt-2" id="dependentes" name="dependentes" type="number" min="0" max="30" step="1" inputmode="numeric" value="{{ form.dependentes }}">
+        <p class="mt-1 text-xs text-muted">Cada dependente abate R$ 189,59 do imposto por mês.</p>
+      </div>
+
+      <button class="btn-primary mt-6 w-full" type="submit">Calcular IRRF {{ svg("arrow", "h-4 w-4") }}</button>
+    </form>
+
+    <div class="flex flex-col gap-6">
+      {% if result %}
+      <div class="rounded-card border border-slate-200 bg-white p-6 shadow-card">
+        <h2 class="text-lg font-semibold">Resultado estimado</h2>
+        <dl class="mt-4">
+          {% for item in result.items %}
+          <div class="border-b border-slate-100 py-3">
+            <div class="flex items-start justify-between gap-4">
+              <dt class="text-sm leading-6 text-muted">{{ item.label }}</dt>
+              <dd class="text-sm font-semibold {{ 'text-red-700' if item.value < 0 else 'text-navy' }}">{{ item.value_text }}</dd>
+            </div>
+            {% if item.hint %}
+            <p class="mt-1 text-xs text-muted">{{ item.hint }}</p>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </dl>
+        <div class="mt-4 flex items-center justify-between gap-4 rounded-xl bg-navy px-4 py-4 text-white">
+          <p class="text-sm font-medium text-white/75">IRRF no mês</p>
+          <p class="text-lg font-extrabold">{{ result.irrf_text }}</p>
+        </div>
+        <p class="mt-3 text-xs leading-6 text-muted">Salário líquido estimado: {{ result.liquido_text }} (bruto − INSS − IRRF).</p>
+      </div>
+
+      <div class="rounded-card border border-slate-200 bg-white p-6 shadow-card">
+        <h2 class="text-base font-semibold">Como ler o resultado</h2>
+        <ul class="mt-3 flex flex-col gap-3">
+          {% for nota in result.notas %}
+          <li class="flex items-start gap-2 text-sm leading-6 text-muted">
+            <span class="text-brand">{{ svg("check", "mt-0.5 h-4 w-4") }}</span>
+            <span>{{ nota }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% else %}
+      <div class="rounded-card border border-slate-200 bg-white p-6 shadow-card">
+        <h2 class="text-lg font-semibold">Como o cálculo funciona</h2>
+        <ul class="mt-3 flex flex-col gap-3">
+          {% set itens = [
+            "INSS descontado na tabela progressiva de 2026",
+            "Base de cálculo = salário bruto − deduções (INSS + dependentes)",
+            "Aplica a tabela do IRRF sobre a base",
+            "Redução da Lei 15.270/2025 até salários de R$ 7.350",
+          ] %}
+          {% for texto in itens %}
+          <li class="flex items-start gap-2 text-sm leading-6 text-muted">
+            <span class="text-brand">{{ svg("check", "mt-0.5 h-4 w-4") }}</span>
+            <span>{{ texto }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+
+      {{ tabela_referencia(tabela) }}
+
+      <div class="rounded-xl border border-slate-200 bg-canvas px-4 py-4">
+        <p class="text-xs leading-6 text-muted">
+          Cálculo estimado de IRRF para salário. Despesas médicas, pensão judicial e previdência privada não entram aqui —
+          são deduções anuais da declaração de IR.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

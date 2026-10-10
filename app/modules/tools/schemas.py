@@ -95,3 +95,78 @@ class FeriasInput(BaseModel):
         if self.dias_gozados + self.dias_abono > 30:
             raise ValueError("Descanso + abono não podem ultrapassar 30 dias.")
         return self
+
+
+class InssInput(BaseModel):
+    salario_bruto: float
+
+    @field_validator("salario_bruto")
+    @classmethod
+    def validate_salario(cls, value: float) -> float:
+        if value <= 0:
+            raise ValueError("O salário bruto mensal deve ser maior que zero.")
+        if value > 1_000_000:
+            raise ValueError("O salário informado está acima do limite considerado.")
+        return value
+
+
+def _validate_dependentes(value: int) -> int:
+    if not 0 <= value <= 30:
+        raise ValueError("O número de dependentes deve ficar entre 0 e 30.")
+    return value
+
+
+def _validate_despesa(value: float) -> float:
+    if value < 0:
+        raise ValueError("As despesas não podem ser negativas.")
+    return value
+
+
+class IrrfInput(BaseModel):
+    salario_bruto: float
+    dependentes: int = 0
+
+    @field_validator("salario_bruto")
+    @classmethod
+    def validate_salario(cls, value: float) -> float:
+        if value <= 0:
+            raise ValueError("O salário bruto mensal deve ser maior que zero.")
+        if value > 1_000_000:
+            raise ValueError("O salário informado está acima do limite considerado.")
+        return value
+
+    @field_validator("dependentes")
+    @classmethod
+    def validate_dependentes_irrf(cls, value: int) -> int:
+        return _validate_dependentes(value)
+
+
+class RestituicaoInput(BaseModel):
+    rendimentos_anuais: float
+    dependentes: int = 0
+    despesas_ensino: float = 0
+    despesas_medicas: float = 0
+    pensao_alimenticia: float = 0
+    contribuicao_inss: float = 0
+    ir_retido_fonte: float = 0
+
+    @field_validator("rendimentos_anuais")
+    @classmethod
+    def validate_rendimentos(cls, value: float) -> float:
+        if value <= 0:
+            raise ValueError("Os rendimentos anuais devem ser maior que zero.")
+        if value > 100_000_000:
+            raise ValueError("Os rendimentos informados estão acima do limite considerado.")
+        return value
+
+    @field_validator("dependentes")
+    @classmethod
+    def validate_dependentes_rest(cls, value: int) -> int:
+        return _validate_dependentes(value)
+
+    @field_validator(
+        "despesas_ensino", "despesas_medicas", "pensao_alimenticia", "contribuicao_inss", "ir_retido_fonte"
+    )
+    @classmethod
+    def validate_despesas(cls, value: float) -> float:
+        return _validate_despesa(value)
