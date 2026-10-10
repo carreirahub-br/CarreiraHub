@@ -5,12 +5,6 @@ from app.core.templating import templates
 router = APIRouter()
 
 PAGES = {
-    "curriculo": {
-        "path": "/curriculo",
-        "title": "Criar currículo",
-        "intro": "O criador de currículo está em desenvolvimento. Em breve você poderá montar e exportar um currículo profissional por aqui.",
-        "meta": "Crie um currículo profissional no CarreiraHub. Ferramenta em preparação.",
-    },
     "ferramentas": {
         "path": "/ferramentas",
         "title": "Ferramentas de carreira",
@@ -111,11 +105,6 @@ def _placeholder(request: Request, key: str):
             "canonical_path": page["path"],
         },
     )
-
-
-@router.get("/curriculo", include_in_schema=False)
-def curriculo(request: Request):
-    return _placeholder(request, "curriculo")
 
 
 @router.get("/ferramentas", include_in_schema=False)

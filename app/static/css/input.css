@@ -66,4 +66,132 @@
   .section-kicker {
     @apply text-xs font-semibold uppercase tracking-[0.14em] text-brand;
   }
+
+  .btn:disabled {
+    @apply cursor-not-allowed opacity-40 hover:bg-transparent;
+  }
+
+  /* Folha do currículo: mantém proporção A4 na tela e vira a página inteira na impressão. */
+  .resume-sheet {
+    @apply mx-auto bg-white text-[13px] leading-[1.5] text-slate-900 shadow-card;
+    width: 100%;
+    max-width: 210mm;
+    min-height: 297mm;
+    padding: 16mm 15mm;
+    font-family: Inter, "Segoe UI", Arial, sans-serif;
+  }
+
+  .resume-empty {
+    @apply py-24 text-center text-sm text-muted;
+  }
+
+  .resume-header {
+    @apply mb-5;
+  }
+
+  .resume-name {
+    @apply text-[26px] font-bold leading-tight tracking-tight text-navy;
+  }
+
+  .resume-title {
+    @apply mt-1 text-[15px] font-medium text-brand;
+  }
+
+  .resume-contacts {
+    @apply mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[12px] text-slate-600;
+  }
+
+  .resume-contacts span + span::before {
+    content: "·";
+    @apply mr-3 text-slate-400;
+  }
+
+  .resume-section {
+    @apply mt-5;
+    break-inside: avoid-page;
+  }
+
+  .resume-heading {
+    @apply mb-2 border-b border-slate-200 pb-1 text-[12px] font-bold uppercase tracking-[0.12em] text-navy;
+  }
+
+  .resume-text {
+    @apply whitespace-pre-line text-slate-700;
+  }
+
+  .resume-item {
+    @apply mb-3;
+    break-inside: avoid;
+  }
+
+  .resume-item-head {
+    @apply flex flex-wrap items-baseline justify-between gap-x-4;
+  }
+
+  .resume-item-title {
+    @apply font-semibold text-slate-900;
+  }
+
+  .resume-item-meta {
+    @apply text-[12px] text-slate-500;
+  }
+
+  .resume-item-sub {
+    @apply text-[12px] text-slate-600;
+  }
+
+  .resume-bullets {
+    @apply mt-1 list-disc space-y-0.5 pl-5 text-slate-700;
+  }
+
+  .tpl-classico .resume-header {
+    @apply border-b-2 border-navy pb-4 text-center;
+  }
+
+  .tpl-classico .resume-contacts {
+    @apply justify-center;
+  }
+
+  .tpl-classico .resume-heading {
+    @apply border-b-0 pb-0;
+  }
+
+  .tpl-moderno {
+    border-top: 6px solid theme("colors.brand.DEFAULT");
+  }
+
+  .tpl-moderno .resume-heading {
+    @apply border-b-0 pb-0 text-brand;
+  }
+
+  .tpl-moderno .resume-section {
+    @apply border-l-2 border-accent pl-4;
+  }
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm 15mm;
+  }
+
+  html,
+  body {
+    @apply bg-white;
+  }
+
+  .resume-sheet {
+    max-width: none;
+    min-height: auto;
+    padding: 0;
+    box-shadow: none;
+  }
+
+  .tpl-moderno {
+    border-top: 0;
+  }
+
+  .resume-empty {
+    display: none;
+  }
 }

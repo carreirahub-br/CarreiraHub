@@ -36,9 +36,9 @@ TOOLS = (
         name="Criador de currículo",
         description="Monte um currículo claro, com seções profissionais e exportação em PDF.",
         icon="file",
-        available=False,
-        path=None,
-        cta="Em breve",
+        available=True,
+        path="/curriculo",
+        cta="Criar currículo",
     ),
     ToolCard(
         slug="analisador-ats",

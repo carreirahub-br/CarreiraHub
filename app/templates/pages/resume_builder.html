@@ -1,0 +1,393 @@
+{% extends "base.html" %}
+{% from "components/icons.html" import svg %}
+
+{% block scripts %}
+<script src="/static/js/resume.js" defer></script>
+{% endblock %}
+
+{% block content %}
+<div class="bg-canvas print:bg-white" x-data="resumeBuilder">
+  <noscript>
+    <p class="bg-amber-50 px-4 py-3 text-center text-sm text-navy">O criador de currículo precisa de JavaScript habilitado no navegador.</p>
+  </noscript>
+  <section class="border-b border-slate-200 bg-white print:hidden">
+    <div class="mx-auto flex max-w-[90rem] flex-col gap-4 px-4 py-6 lg:flex-row lg:items-end lg:justify-between lg:px-6">
+      <div>
+        <p class="section-kicker">Ferramenta gratuita</p>
+        <h1 class="mt-2 text-2xl font-extrabold tracking-tight sm:text-3xl">Criar currículo</h1>
+        <p class="mt-2 max-w-2xl text-sm leading-6 text-muted">
+          Preencha as seções e acompanhe a pré-visualização. O rascunho fica salvo apenas neste navegador; nada é enviado ao CarreiraHub.
+        </p>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <label class="sr-only" for="resume-template">Modelo</label>
+        <select id="resume-template" class="input w-auto py-2.5" x-model="data.template">
+          <option value="classico">Modelo clássico</option>
+          <option value="moderno">Modelo moderno</option>
+        </select>
+        <button type="button" class="btn-ghost border border-slate-200" @click="clearAll()">Limpar</button>
+        <button type="button" class="btn-primary" @click="exportPdf()">Baixar PDF</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="sticky top-[65px] z-30 border-b border-slate-200 bg-white lg:hidden print:hidden">
+    <div class="mx-auto flex max-w-[90rem] px-4" role="tablist" aria-label="Modo de exibição">
+      <button type="button" role="tab" class="flex-1 border-b-2 py-3 text-sm font-semibold"
+        :class="view === 'edit' ? 'border-brand text-brand' : 'border-transparent text-muted'"
+        :aria-selected="(view === 'edit').toString()" @click="view = 'edit'">Editar</button>
+      <button type="button" role="tab" class="flex-1 border-b-2 py-3 text-sm font-semibold"
+        :class="view === 'preview' ? 'border-brand text-brand' : 'border-transparent text-muted'"
+        :aria-selected="(view === 'preview').toString()" @click="view = 'preview'">Visualizar</button>
+    </div>
+  </div>
+
+  <div class="mx-auto grid max-w-[90rem] gap-6 px-4 py-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:px-6 print:block print:max-w-none print:p-0">
+    {# Editor #}
+    <div class="space-y-4 print:hidden" :class="view === 'edit' ? 'block' : 'hidden lg:block'">
+      <div class="rounded-card border border-slate-200 bg-white p-4">
+        <div class="flex items-center justify-between text-sm">
+          <span class="font-semibold">Preenchimento</span>
+          <span class="text-muted" x-text="progress + '%'"></span>
+        </div>
+        <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-canvas">
+          <div class="h-full rounded-full bg-accent transition-all" :style="'width:' + progress + '%'"></div>
+        </div>
+        <p class="mt-2 text-xs text-muted" aria-live="polite">
+          <template x-if="storageError"><span class="text-red-700">Não foi possível salvar neste navegador (modo privado ou armazenamento cheio). Exporte o PDF antes de sair.</span></template>
+          <template x-if="!storageError && savedAt"><span x-text="'Rascunho salvo neste navegador às ' + savedAt"></span></template>
+          <template x-if="!storageError && !savedAt"><span>As alterações são salvas automaticamente neste navegador.</span></template>
+        </p>
+      </div>
+
+      <details class="group rounded-card border border-slate-200 bg-white" open>
+        <summary class="flex cursor-pointer list-none items-center justify-between p-4 font-semibold">
+          Dados pessoais
+          <span class="text-muted transition-transform group-open:rotate-90">{{ svg("arrow", "h-4 w-4") }}</span>
+        </summary>
+        <div class="grid gap-3 border-t border-slate-100 p-4 sm:grid-cols-2">
+          <div class="sm:col-span-2">
+            <label class="mb-1.5 block text-sm font-medium" for="cv-name">Nome completo</label>
+            <input class="input" id="cv-name" type="text" maxlength="100" autocomplete="name" x-model="data.personal.name">
+          </div>
+          <div class="sm:col-span-2">
+            <label class="mb-1.5 block text-sm font-medium" for="cv-title">Cargo ou objetivo</label>
+            <input class="input" id="cv-title" type="text" maxlength="100" placeholder="Ex.: Analista Administrativo" x-model="data.personal.title">
+          </div>
+          <div>
+            <label class="mb-1.5 block text-sm font-medium" for="cv-email">E-mail</label>
+            <input class="input" id="cv-email" type="email" maxlength="120" autocomplete="email" x-model="data.personal.email">
+          </div>
+          <div>
+            <label class="mb-1.5 block text-sm font-medium" for="cv-phone">Telefone</label>
+            <input class="input" id="cv-phone" type="tel" maxlength="30" autocomplete="tel" placeholder="(11) 90000-0000" x-model="data.personal.phone">
+          </div>
+          <div>
+            <label class="mb-1.5 block text-sm font-medium" for="cv-city">Cidade / UF</label>
+            <input class="input" id="cv-city" type="text" maxlength="80" placeholder="Ex.: Campinas, SP" x-model="data.personal.city">
+          </div>
+          <div>
+            <label class="mb-1.5 block text-sm font-medium" for="cv-linkedin">LinkedIn</label>
+            <input class="input" id="cv-linkedin" type="text" maxlength="120" placeholder="linkedin.com/in/seu-nome" x-model="data.personal.linkedin">
+          </div>
+          <div class="sm:col-span-2">
+            <label class="mb-1.5 block text-sm font-medium" for="cv-website">Portfólio ou site (opcional)</label>
+            <input class="input" id="cv-website" type="text" maxlength="120" x-model="data.personal.website">
+          </div>
+          <p class="text-xs leading-5 text-muted sm:col-span-2">Não é necessário informar CPF, RG, estado civil, idade ou foto. Esses dados não costumam ser exigidos e expõem informações pessoais.</p>
+        </div>
+      </details>
+
+      <details class="group rounded-card border border-slate-200 bg-white" open>
+        <summary class="flex cursor-pointer list-none items-center justify-between p-4 font-semibold">
+          Resumo profissional
+          <span class="text-muted transition-transform group-open:rotate-90">{{ svg("arrow", "h-4 w-4") }}</span>
+        </summary>
+        <div class="border-t border-slate-100 p-4">
+          <label class="mb-1.5 block text-sm font-medium" for="cv-summary">Apresente-se em 3 a 5 linhas</label>
+          <textarea class="input min-h-[7rem]" id="cv-summary" maxlength="800" x-model="data.summary"
+            placeholder="Área de atuação, principais competências e o tipo de oportunidade que você busca."></textarea>
+          <p class="mt-1 text-right text-xs text-muted" x-text="data.summary.length + '/800'"></p>
+        </div>
+      </details>
+
+      <details class="group rounded-card border border-slate-200 bg-white" open>
+        <summary class="flex cursor-pointer list-none items-center justify-between p-4 font-semibold">
+          <span>Experiência profissional <span class="font-normal text-muted" x-text="'(' + data.experiences.length + ')'"></span></span>
+          <span class="text-muted transition-transform group-open:rotate-90">{{ svg("arrow", "h-4 w-4") }}</span>
+        </summary>
+        <div class="space-y-4 border-t border-slate-100 p-4">
+          <template x-if="!data.experiences.length">
+            <p class="text-sm text-muted">Sem experiência formal? Inclua estágios, trabalhos voluntários, freelas ou projetos acadêmicos.</p>
+          </template>
+          <template x-for="(item, index) in data.experiences" :key="index">
+            <fieldset class="rounded-xl border border-slate-200 p-4">
+              <legend class="px-1 text-xs font-semibold uppercase tracking-wide text-muted" x-text="'Experiência ' + (index + 1)"></legend>
+              <div class="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label class="mb-1.5 block text-sm font-medium" :for="'exp-role-' + index">Cargo</label>
+                  <input class="input" :id="'exp-role-' + index" type="text" maxlength="100" x-model="item.role">
+                </div>
+                <div>
+                  <label class="mb-1.5 block text-sm font-medium" :for="'exp-company-' + index">Empresa</label>
+                  <input class="input" :id="'exp-company-' + index" type="text" maxlength="100" x-model="item.company">
+                </div>
+                <div>
+                  <label class="mb-1.5 block text-sm font-medium" :for="'exp-start-' + index">Início</label>
+                  <input class="input" :id="'exp-start-' + index" type="month" x-model="item.start">
+                </div>
+                <div>
+                  <label class="mb-1.5 block text-sm font-medium" :for="'exp-end-' + index">Término</label>
+                  <input class="input disabled:bg-canvas disabled:text-muted" :id="'exp-end-' + index" type="month" x-model="item.end" :disabled="item.current">
+                </div>
+                <div class="sm:col-span-2">
+                  <label class="inline-flex items-center gap-2 text-sm">
+                    <input type="checkbox" class="h-4 w-4 rounded border-slate-300" x-model="item.current">
+                    Trabalho aqui atualmente
+                  </label>
+                </div>
+                <div class="sm:col-span-2">
+                  <label class="mb-1.5 block text-sm font-medium" :for="'exp-city-' + index">Cidade ou modalidade (opcional)</label>
+                  <input class="input" :id="'exp-city-' + index" type="text" maxlength="80" placeholder="Ex.: São Paulo, SP · Remoto" x-model="item.city">
+                </div>
+                <div class="sm:col-span-2">
+                  <label class="mb-1.5 block text-sm font-medium" :for="'exp-desc-' + index">Atividades e resultados</label>
+                  <textarea class="input min-h-[6rem]" :id="'exp-desc-' + index" maxlength="1200" x-model="item.description"
+                    placeholder="Uma conquista por linha. Ex.: Reduzi o tempo de atendimento em 20% reorganizando a fila de chamados."></textarea>
+                  <p class="mt-1 text-xs text-muted">Cada linha vira um tópico. Comece com um verbo e, se possível, cite números.</p>
+                </div>
+              </div>
+              <div class="mt-3 flex flex-wrap gap-2 text-sm">
+                <button type="button" class="btn-ghost px-3 py-1.5" @click="moveItem('experiences', index, -1)" :disabled="index === 0">Subir</button>
+                <button type="button" class="btn-ghost px-3 py-1.5" @click="moveItem('experiences', index, 1)" :disabled="index === data.experiences.length - 1">Descer</button>
+                <button type="button" class="btn-ghost px-3 py-1.5 text-red-700" @click="removeItem('experiences', index)">Remover</button>
+              </div>
+            </fieldset>
+          </template>
+          <button type="button" class="btn-ghost w-full border border-dashed border-slate-300" @click="addItem('experiences')">+ Adicionar experiência</button>
+        </div>
+      </details>
+
+      <details class="group rounded-card border border-slate-200 bg-white" open>
+        <summary class="flex cursor-pointer list-none items-center justify-between p-4 font-semibold">
+          <span>Formação <span class="font-normal text-muted" x-text="'(' + data.education.length + ')'"></span></span>
+          <span class="text-muted transition-transform group-open:rotate-90">{{ svg("arrow", "h-4 w-4") }}</span>
+        </summary>
+        <div class="space-y-4 border-t border-slate-100 p-4">
+          <template x-for="(item, index) in data.education" :key="index">
+            <fieldset class="rounded-xl border border-slate-200 p-4">
+              <legend class="px-1 text-xs font-semibold uppercase tracking-wide text-muted" x-text="'Formação ' + (index + 1)"></legend>
+              <div class="grid gap-3 sm:grid-cols-2">
+                <div class="sm:col-span-2">
+                  <label class="mb-1.5 block text-sm font-medium" :for="'edu-course-' + index">Curso</label>
+                  <input class="input" :id="'edu-course-' + index" type="text" maxlength="120" placeholder="Ex.: Tecnólogo em Logística" x-model="item.course">
+                </div>
+                <div class="sm:col-span-2">
+                  <label class="mb-1.5 block text-sm font-medium" :for="'edu-inst-' + index">Instituição</label>
+                  <input class="input" :id="'edu-inst-' + index" type="text" maxlength="120" x-model="item.institution">
+                </div>
+                <div>
+                  <label class="mb-1.5 block text-sm font-medium" :for="'edu-start-' + index">Início</label>
+                  <input class="input" :id="'edu-start-' + index" type="month" x-model="item.start">
+                </div>
+                <div>
+                  <label class="mb-1.5 block text-sm font-medium" :for="'edu-end-' + index">Conclusão (ou previsão)</label>
+                  <input class="input" :id="'edu-end-' + index" type="month" x-model="item.end">
+                </div>
+                <div class="sm:col-span-2">
+                  <label class="mb-1.5 block text-sm font-medium" :for="'edu-status-' + index">Situação</label>
+                  <select class="input" :id="'edu-status-' + index" x-model="item.status">
+                    <option value="concluido">Concluído</option>
+                    <option value="cursando">Cursando</option>
+                    <option value="trancado">Trancado</option>
+                  </select>
+                </div>
+              </div>
+              <div class="mt-3 flex flex-wrap gap-2 text-sm">
+                <button type="button" class="btn-ghost px-3 py-1.5" @click="moveItem('education', index, -1)" :disabled="index === 0">Subir</button>
+                <button type="button" class="btn-ghost px-3 py-1.5" @click="moveItem('education', index, 1)" :disabled="index === data.education.length - 1">Descer</button>
+                <button type="button" class="btn-ghost px-3 py-1.5 text-red-700" @click="removeItem('education', index)">Remover</button>
+              </div>
+            </fieldset>
+          </template>
+          <button type="button" class="btn-ghost w-full border border-dashed border-slate-300" @click="addItem('education')">+ Adicionar formação</button>
+        </div>
+      </details>
+
+      <details class="group rounded-card border border-slate-200 bg-white" open>
+        <summary class="flex cursor-pointer list-none items-center justify-between p-4 font-semibold">
+          <span>Habilidades <span class="font-normal text-muted" x-text="'(' + data.skills.length + ')'"></span></span>
+          <span class="text-muted transition-transform group-open:rotate-90">{{ svg("arrow", "h-4 w-4") }}</span>
+        </summary>
+        <div class="border-t border-slate-100 p-4">
+          <label class="mb-1.5 block text-sm font-medium" for="cv-skill">Adicionar habilidade</label>
+          <div class="flex gap-2">
+            <input class="input" id="cv-skill" type="text" maxlength="200" placeholder="Ex.: Excel avançado, atendimento ao cliente"
+              x-model="skillInput" @keydown.enter.prevent="addSkill()">
+            <button type="button" class="btn-navy shrink-0" @click="addSkill()">Adicionar</button>
+          </div>
+          <p class="mt-1 text-xs text-muted">Separe várias por vírgula. Use os termos que aparecem nas vagas que você procura.</p>
+          <ul class="mt-3 flex flex-wrap gap-2" aria-label="Habilidades adicionadas">
+            <template x-for="(skill, index) in data.skills" :key="skill">
+              <li class="inline-flex items-center gap-1 rounded-full bg-canvas py-1 pl-3 pr-1 text-sm">
+                <span x-text="skill"></span>
+                <button type="button" class="rounded-full p-1 text-muted hover:text-red-700" @click="removeSkill(index)" :aria-label="'Remover ' + skill">
+                  {{ svg("close", "h-3.5 w-3.5") }}
+                </button>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </details>
+
+      <details class="group rounded-card border border-slate-200 bg-white">
+        <summary class="flex cursor-pointer list-none items-center justify-between p-4 font-semibold">
+          <span>Idiomas <span class="font-normal text-muted" x-text="'(' + data.languages.length + ')'"></span></span>
+          <span class="text-muted transition-transform group-open:rotate-90">{{ svg("arrow", "h-4 w-4") }}</span>
+        </summary>
+        <div class="space-y-3 border-t border-slate-100 p-4">
+          <template x-for="(item, index) in data.languages" :key="index">
+            <div class="grid grid-cols-[1fr_9rem_auto] items-end gap-2">
+              <div>
+                <label class="mb-1.5 block text-sm font-medium" :for="'lang-name-' + index">Idioma</label>
+                <input class="input" :id="'lang-name-' + index" type="text" maxlength="40" x-model="item.name">
+              </div>
+              <div>
+                <label class="mb-1.5 block text-sm font-medium" :for="'lang-level-' + index">Nível</label>
+                <select class="input" :id="'lang-level-' + index" x-model="item.level">
+                  <option value="basico">Básico</option>
+                  <option value="intermediario">Intermediário</option>
+                  <option value="avancado">Avançado</option>
+                  <option value="fluente">Fluente</option>
+                  <option value="nativo">Nativo</option>
+                </select>
+              </div>
+              <button type="button" class="btn-ghost px-3 text-red-700" @click="removeItem('languages', index)" :aria-label="'Remover idioma ' + (index + 1)">
+                {{ svg("close", "h-4 w-4") }}
+              </button>
+            </div>
+          </template>
+          <button type="button" class="btn-ghost w-full border border-dashed border-slate-300" @click="addItem('languages')">+ Adicionar idioma</button>
+        </div>
+      </details>
+
+      <details class="group rounded-card border border-slate-200 bg-white">
+        <summary class="flex cursor-pointer list-none items-center justify-between p-4 font-semibold">
+          <span>Cursos e certificações <span class="font-normal text-muted" x-text="'(' + data.courses.length + ')'"></span></span>
+          <span class="text-muted transition-transform group-open:rotate-90">{{ svg("arrow", "h-4 w-4") }}</span>
+        </summary>
+        <div class="space-y-3 border-t border-slate-100 p-4">
+          <template x-for="(item, index) in data.courses" :key="index">
+            <div class="grid gap-2 sm:grid-cols-[1fr_1fr_6rem_auto] sm:items-end">
+              <div>
+                <label class="mb-1.5 block text-sm font-medium" :for="'course-name-' + index">Curso</label>
+                <input class="input" :id="'course-name-' + index" type="text" maxlength="120" x-model="item.name">
+              </div>
+              <div>
+                <label class="mb-1.5 block text-sm font-medium" :for="'course-inst-' + index">Instituição</label>
+                <input class="input" :id="'course-inst-' + index" type="text" maxlength="100" x-model="item.institution">
+              </div>
+              <div>
+                <label class="mb-1.5 block text-sm font-medium" :for="'course-year-' + index">Ano</label>
+                <input class="input" :id="'course-year-' + index" type="text" inputmode="numeric" maxlength="4" x-model="item.year">
+              </div>
+              <button type="button" class="btn-ghost px-3 text-red-700" @click="removeItem('courses', index)" :aria-label="'Remover curso ' + (index + 1)">
+                {{ svg("close", "h-4 w-4") }}
+              </button>
+            </div>
+          </template>
+          <button type="button" class="btn-ghost w-full border border-dashed border-slate-300" @click="addItem('courses')">+ Adicionar curso</button>
+        </div>
+      </details>
+    </div>
+
+    {# Pré-visualização #}
+    <div class="print:block" :class="view === 'preview' ? 'block' : 'hidden lg:block'">
+      <div class="lg:sticky lg:top-24">
+        <div class="mb-3 flex items-center justify-between print:hidden">
+          <p class="text-sm font-semibold">Pré-visualização</p>
+          <button type="button" class="btn-primary lg:hidden" @click="exportPdf()">Baixar PDF</button>
+        </div>
+        <div class="overflow-auto rounded-card border border-slate-200 bg-slate-100 p-3 sm:p-6 lg:max-h-[calc(100vh-9rem)] print:max-h-none print:overflow-visible print:border-0 print:bg-white print:p-0">
+          <article class="resume-sheet" :class="'tpl-' + data.template" aria-label="Pré-visualização do currículo">
+            <template x-if="isEmpty">
+              <p class="resume-empty">Comece pelos dados pessoais. A pré-visualização aparece aqui conforme você preenche.</p>
+            </template>
+
+            <header class="resume-header" x-show="data.personal.name || data.personal.title || contacts().length">
+              <p class="resume-name" x-text="data.personal.name || 'Seu nome'"></p>
+              <p class="resume-title" x-show="data.personal.title" x-text="data.personal.title"></p>
+              <p class="resume-contacts" x-show="contacts().length">
+                <template x-for="(contact, index) in contacts()" :key="index">
+                  <span x-text="contact"></span>
+                </template>
+              </p>
+            </header>
+
+            <section class="resume-section" x-show="data.summary.trim()">
+              <h2 class="resume-heading">Resumo</h2>
+              <p class="resume-text" x-text="data.summary"></p>
+            </section>
+
+            <section class="resume-section" x-show="data.experiences.length">
+              <h2 class="resume-heading">Experiência profissional</h2>
+              <template x-for="(item, index) in data.experiences" :key="index">
+                <div class="resume-item">
+                  <div class="resume-item-head">
+                    <p class="resume-item-title">
+                      <span x-text="item.role || 'Cargo'"></span><template x-if="item.company"><span x-text="' · ' + item.company"></span></template>
+                    </p>
+                    <p class="resume-item-meta" x-text="period(item.start, item.end, item.current)"></p>
+                  </div>
+                  <p class="resume-item-sub" x-show="item.city" x-text="item.city"></p>
+                  <ul class="resume-bullets" x-show="bullets(item.description).length">
+                    <template x-for="(line, lineIndex) in bullets(item.description)" :key="lineIndex">
+                      <li x-text="line"></li>
+                    </template>
+                  </ul>
+                </div>
+              </template>
+            </section>
+
+            <section class="resume-section" x-show="data.education.length">
+              <h2 class="resume-heading">Formação</h2>
+              <template x-for="(item, index) in data.education" :key="index">
+                <div class="resume-item">
+                  <div class="resume-item-head">
+                    <p class="resume-item-title" x-text="item.course || 'Curso'"></p>
+                    <p class="resume-item-meta" x-text="period(item.start, item.end, false)"></p>
+                  </div>
+                  <p class="resume-item-sub" x-text="[item.institution, educationStatus[item.status]].filter(Boolean).join(' · ')"></p>
+                </div>
+              </template>
+            </section>
+
+            <section class="resume-section" x-show="data.skills.length">
+              <h2 class="resume-heading">Habilidades</h2>
+              <p class="resume-text" x-text="data.skills.join(' · ')"></p>
+            </section>
+
+            <section class="resume-section" x-show="data.languages.some(l => l.name.trim())">
+              <h2 class="resume-heading">Idiomas</h2>
+              <p class="resume-text" x-text="data.languages.filter(l => l.name.trim()).map(l => l.name + ' (' + languageLevels[l.level] + ')').join(' · ')"></p>
+            </section>
+
+            <section class="resume-section" x-show="data.courses.some(c => c.name.trim())">
+              <h2 class="resume-heading">Cursos e certificações</h2>
+              <ul class="resume-bullets">
+                <template x-for="(item, index) in data.courses.filter(c => c.name.trim())" :key="index">
+                  <li x-text="[item.name, item.institution, item.year].filter(Boolean).join(' · ')"></li>
+                </template>
+              </ul>
+            </section>
+          </article>
+        </div>
+        <p class="mt-3 text-xs leading-5 text-muted print:hidden">
+          “Baixar PDF” abre a impressão do navegador: escolha <strong>Salvar como PDF</strong> e desative “Cabeçalhos e rodapés” para um arquivo limpo.
+          O layout em coluna única com texto selecionável é compatível com sistemas de triagem (ATS).
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
