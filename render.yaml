@@ -1,11 +1,11 @@
-# Blueprint do Render: Web Service (Docker) + PostgreSQL.
+# Blueprint do Render: Web Service (Docker) + PostgreSQL no plano Free.
 # Dashboard: New → Blueprint → repositório CarreiraHub.
-# Depois do primeiro deploy, defina o domínio customizado e atualize APP_BASE_URL.
+# O site Free dorme sem visitas. O Postgres Free expira em 30 dias.
 
 databases:
   - name: carreirahub-db
     region: ohio
-    plan: 0.1c-256mb
+    plan: free
     postgresMajorVersion: "16"
     databaseName: carreirahub
     user: carreirahub
@@ -15,7 +15,7 @@ services:
   - type: web
     name: carreirahub
     runtime: docker
-    plan: 0.5c-512mb
+    plan: free
     region: ohio
     dockerfilePath: ./Dockerfile
     dockerContext: .

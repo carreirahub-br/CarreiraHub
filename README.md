@@ -42,7 +42,7 @@ O arquivo `render.yaml` sobe o FastAPI (Docker) e um PostgreSQL na mesma região
 
 O start do container roda `alembic upgrade head` e depois o Uvicorn. `SECRET_KEY` e `DATABASE_URL` são gerados/ligados pelo Blueprint.
 
-O plano `0.5c-512mb` permanece ligado (melhor para SEO). O plano `free` do Render dorme sem tráfego e não é adequado para um site público indexável.
+O Blueprint está no plano **Free** (US$ 0): o site dorme após inatividade e o Postgres expira em 30 dias. Para produção pública, suba depois para `0.5c-512mb` (site) e `0.1c-256mb` (banco).
 
 ---
 
