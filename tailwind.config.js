@@ -29,7 +29,7 @@ module.exports = {
         header: "0 1px 0 rgba(8, 38, 83, 0.06)",
       },
       maxWidth: {
-        shell: "72rem",
+        shell: "76rem",
       },
       borderRadius: {
         card: "0.875rem",

@@ -64,6 +64,8 @@
         savedAt: "",
         storageError: false,
         saveTimer: null,
+        scale: 1,
+        sheetHeight: 0,
 
         educationStatus: {
           concluido: "Concluído",
@@ -86,6 +88,35 @@
             this.storageError = true;
           }
           this.$watch("data", this.scheduleSave.bind(this), { deep: true });
+          this.$watch("view", this.fitSheet.bind(this));
+          if (window.ResizeObserver && this.$refs.frame) {
+            var observer = new ResizeObserver(this.fitSheet.bind(this));
+            observer.observe(this.$refs.frame.parentElement);
+            observer.observe(this.$refs.sheet);
+          }
+          this.$nextTick(this.fitSheet.bind(this));
+        },
+
+        fitSheet: function () {
+          var frame = this.$refs.frame;
+          var sheet = this.$refs.sheet;
+          if (!frame || !sheet) return;
+          var container = frame.parentElement;
+          var style = window.getComputedStyle(container);
+          var available =
+            container.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+          if (available <= 0) return;
+          this.scale = Math.min(1, available / sheet.offsetWidth);
+          this.sheetHeight = sheet.offsetHeight;
+        },
+
+        get frameStyle() {
+          if (!this.sheetHeight) return "";
+          return "height:" + Math.ceil(this.sheetHeight * this.scale) + "px";
+        },
+
+        get sheetStyle() {
+          return "transform:scale(" + this.scale + ");margin-left:" + (this.scale < 1 ? "0" : "auto");
         },
 
         scheduleSave: function () {

@@ -4,30 +4,30 @@
 {% block content %}
 <section class="relative overflow-hidden">
   <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(8,124,245,0.08),transparent_42%)]"></div>
-  <div class="mx-auto grid max-w-shell items-center gap-12 px-4 pb-16 pt-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:px-6 lg:pb-20 lg:pt-14">
+  <div class="shell grid items-center gap-12 pb-16 pt-10 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] lg:pb-20 lg:pt-14 xl:gap-16 xl:pb-24 xl:pt-20">
     <div>
       <p class="section-kicker">Conectando talentos a novas oportunidades</p>
-      <h1 class="mt-4 max-w-xl text-4xl font-extrabold tracking-tight text-navy sm:text-5xl">Sua próxima oportunidade começa aqui.</h1>
-      <p class="mt-4 max-w-xl text-base leading-7 text-muted sm:text-lg">Encontre vagas de emprego, crie um currículo profissional e descubra ferramentas para impulsionar sua carreira.</p>
+      <h1 class="mt-4 max-w-2xl text-4xl font-extrabold tracking-tight text-navy sm:text-5xl xl:text-6xl xl:leading-[1.05]">Sua próxima oportunidade começa aqui.</h1>
+      <p class="mt-4 max-w-xl text-base leading-7 text-muted sm:text-lg xl:mt-6 xl:max-w-2xl">Encontre vagas de emprego, crie um currículo profissional e descubra ferramentas para impulsionar sua carreira.</p>
 
-      <form class="mt-8 rounded-2xl border border-slate-200 bg-white p-4 shadow-card" method="get" action="/vagas" role="search">
-        <div class="grid gap-3 md:grid-cols-[1.2fr_1fr_auto]">
+      <form class="mt-8 rounded-2xl border border-slate-200 bg-white p-4 shadow-card xl:mt-10 xl:p-5" method="get" action="/vagas" role="search">
+        <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_auto]">
           <div>
-            <label class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted" for="q">Cargo, palavra-chave ou empresa</label>
+            <label class="mb-1.5 block text-sm font-medium" for="q">Cargo, palavra-chave ou empresa</label>
             <div class="relative">
               <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted">{{ svg("search", "h-4 w-4") }}</span>
               <input class="input pl-10" id="q" name="q" type="search" placeholder="Ex.: analista, estágio, Python" autocomplete="off">
             </div>
           </div>
           <div>
-            <label class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted" for="cidade">Cidade ou região</label>
+            <label class="mb-1.5 block text-sm font-medium" for="cidade">Cidade ou região</label>
             <div class="relative">
               <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted">{{ svg("map", "h-4 w-4") }}</span>
               <input class="input pl-10" id="cidade" name="cidade" type="text" placeholder="Ex.: São Paulo" autocomplete="address-level2">
             </div>
           </div>
-          <div class="flex items-end">
-            <button class="btn-primary w-full px-5 md:min-w-[9.5rem]" type="submit">Buscar vagas</button>
+          <div class="flex items-end sm:col-span-2 xl:col-span-1">
+            <button class="btn-primary w-full px-5 py-3 xl:min-w-[9.5rem]" type="submit">Buscar vagas</button>
           </div>
         </div>
         <div class="mt-3">
@@ -47,7 +47,7 @@
       </div>
     </div>
 
-    <div class="relative mx-auto w-full max-w-md" aria-hidden="true">
+    <div class="relative mx-auto w-full max-w-md xl:max-w-lg" aria-hidden="true">
       <div class="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-accent/20 blur-2xl"></div>
       <div class="relative space-y-3">
         <div class="rounded-card border border-slate-200 bg-white p-4 shadow-card">
@@ -75,7 +75,7 @@
 </section>
 
 <section class="bg-canvas py-16" aria-labelledby="categorias-titulo">
-  <div class="mx-auto max-w-shell px-4 lg:px-6">
+  <div class="shell">
     <h2 id="categorias-titulo" class="text-2xl font-bold tracking-tight sm:text-3xl">Explore oportunidades por área</h2>
     <p class="mt-2 max-w-2xl text-sm text-muted">Navegue por categorias. Quantidades só aparecem quando houver vagas ativas publicadas.</p>
     <div class="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -90,7 +90,7 @@
 {% include "components/ad_slot.html" %}
 
 <section class="py-16" aria-labelledby="vagas-titulo">
-  <div class="mx-auto max-w-shell px-4 lg:px-6">
+  <div class="shell">
     <div class="flex flex-wrap items-end justify-between gap-4">
       <div>
         <h2 id="vagas-titulo" class="text-2xl font-bold tracking-tight sm:text-3xl">Oportunidades que combinam com você</h2>
@@ -123,7 +123,7 @@
 {% include "components/ad_slot.html" %}
 
 <section class="bg-canvas py-16" aria-labelledby="ferramentas-titulo">
-  <div class="mx-auto max-w-shell px-4 lg:px-6">
+  <div class="shell">
     <h2 id="ferramentas-titulo" class="text-2xl font-bold tracking-tight sm:text-3xl">Tudo que você precisa para avançar na carreira</h2>
     <p class="mt-2 max-w-2xl text-sm text-muted">Ferramentas gratuitas em preparação. Itens marcados como “Em breve” ainda não estão disponíveis.</p>
     <div class="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -135,7 +135,7 @@
 </section>
 
 <section class="py-16" aria-labelledby="etapas-titulo">
-  <div class="mx-auto max-w-shell px-4 lg:px-6">
+  <div class="shell">
     <h2 id="etapas-titulo" class="text-2xl font-bold tracking-tight sm:text-3xl">Seu próximo passo em três etapas</h2>
     <ol class="mt-10 grid gap-6 lg:grid-cols-3">
       <li class="relative rounded-card border border-slate-200 p-6">
@@ -158,7 +158,7 @@
 </section>
 
 <section class="bg-canvas py-16" aria-labelledby="blog-titulo">
-  <div class="mx-auto max-w-shell px-4 lg:px-6">
+  <div class="shell">
     <h2 id="blog-titulo" class="text-2xl font-bold tracking-tight sm:text-3xl">Conhecimento para levar sua carreira mais longe</h2>
     {% if page.articles %}
       <div class="mt-8 grid gap-4 md:grid-cols-3">
@@ -180,7 +180,7 @@
 {% include "components/ad_slot.html" %}
 
 <section class="py-16" aria-labelledby="empresas-titulo">
-  <div class="mx-auto max-w-shell px-4 lg:px-6">
+  <div class="shell">
     <div class="overflow-hidden rounded-2xl bg-navy px-6 py-12 text-white sm:px-10">
       <p class="text-xs font-semibold uppercase tracking-[0.16em] text-accent">Para empresas</p>
       <h2 id="empresas-titulo" class="mt-3 max-w-xl text-3xl font-bold tracking-tight">Encontre os talentos certos para sua empresa.</h2>
@@ -191,7 +191,7 @@
 </section>
 
 <section class="bg-canvas py-16" aria-labelledby="alertas-titulo">
-  <div class="mx-auto max-w-shell px-4 lg:px-6">
+  <div class="shell">
     <h2 id="alertas-titulo" class="text-2xl font-bold tracking-tight sm:text-3xl">Receba oportunidades no seu e-mail</h2>
     <p class="mt-2 max-w-2xl text-sm text-muted">Informe seu e-mail e área de interesse. O envio só começa depois da confirmação e pode ser cancelado nas preferências.</p>
     <div class="mt-8">
