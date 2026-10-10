@@ -1,0 +1,15 @@
+.git
+.venv
+venv
+__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache
+.env
+*.db
+node_modules
+tests
+migrations/__pycache__
+*.md
+.cursor
+agent-transcripts

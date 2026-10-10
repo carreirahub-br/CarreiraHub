@@ -1,0 +1,48 @@
+<footer class="border-t border-slate-100 bg-canvas">
+  <div class="mx-auto grid max-w-shell gap-10 px-4 py-14 sm:grid-cols-2 lg:grid-cols-4 lg:px-6">
+    <div>
+      <p class="text-sm font-bold">CarreiraHub</p>
+      <p class="mt-3 max-w-xs text-sm leading-6 text-muted">Conectando talentos a novas oportunidades.</p>
+      <ul class="mt-4 space-y-2 text-sm">
+        <li><a class="text-navy/80 hover:text-brand" href="/sobre">Sobre nós</a></li>
+        <li><a class="text-navy/80 hover:text-brand" href="/contato">Contato</a></li>
+        <li><a class="text-navy/80 hover:text-brand" href="/como-funciona">Como funciona</a></li>
+      </ul>
+    </div>
+    <div>
+      <p class="text-sm font-bold">Candidatos</p>
+      <ul class="mt-4 space-y-2 text-sm">
+        <li><a class="text-navy/80 hover:text-brand" href="/vagas">Buscar vagas</a></li>
+        <li><a class="text-navy/80 hover:text-brand" href="/curriculo">Criar currículo</a></li>
+        <li><a class="text-navy/80 hover:text-brand" href="/ferramentas">Ferramentas</a></li>
+        <li><a class="text-navy/80 hover:text-brand" href="/blog">Blog</a></li>
+      </ul>
+    </div>
+    <div>
+      <p class="text-sm font-bold">Empresas</p>
+      <ul class="mt-4 space-y-2 text-sm">
+        <li><a class="text-navy/80 hover:text-brand" href="/empresas">Publicar vagas</a></li>
+        <li><a class="text-navy/80 hover:text-brand" href="/empresas/recrutadores">Para recrutadores</a></li>
+        <li><a class="text-navy/80 hover:text-brand" href="/parcerias">Parcerias</a></li>
+      </ul>
+    </div>
+    <div>
+      <p class="text-sm font-bold">Legal</p>
+      <ul class="mt-4 space-y-2 text-sm">
+        <li><a class="text-navy/80 hover:text-brand" href="/termos">Termos de uso</a></li>
+        <li><a class="text-navy/80 hover:text-brand" href="/privacidade">Política de privacidade</a></li>
+        <li><a class="text-navy/80 hover:text-brand" href="/cookies">Política de cookies</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="border-t border-slate-200/80">
+    <div class="mx-auto flex max-w-shell flex-col gap-3 px-4 py-6 text-sm text-muted sm:flex-row sm:items-center sm:justify-between lg:px-6">
+      <p>© {{ app_name }}. Todos os direitos reservados.</p>
+      <div class="flex flex-wrap gap-4">
+        {% if social_linkedin_url %}<a class="hover:text-brand" href="{{ social_linkedin_url }}" rel="noopener noreferrer">LinkedIn</a>{% endif %}
+        {% if social_instagram_url %}<a class="hover:text-brand" href="{{ social_instagram_url }}" rel="noopener noreferrer">Instagram</a>{% endif %}
+        {% if social_youtube_url %}<a class="hover:text-brand" href="{{ social_youtube_url }}" rel="noopener noreferrer">YouTube</a>{% endif %}
+      </div>
+    </div>
+  </div>
+</footer>

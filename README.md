@@ -1,3 +1,51 @@
+# CarreiraHub
+
+> Plataforma brasileira de vagas de emprego, currículos e ferramentas de carreira.
+
+## Execução local (homepage)
+
+Requisitos: Python 3.12+ e Node.js LTS (apenas para (re)compilar o CSS).
+
+```bash
+python -m venv .venv
+# Windows: .venv\Scripts\activate
+# Linux/macOS: source .venv/bin/activate
+pip install -e ".[dev]"
+copy .env.example .env   # Windows
+# cp .env.example .env   # Linux/macOS
+
+npm install
+npm run css:build
+
+uvicorn app.main:app --reload
+```
+
+Abra `http://localhost:8000`. Sem PostgreSQL, o SQLite local (`carreirahub.db`) é suficiente para a homepage.
+
+Em desenvolvimento, vagas de **demonstração** aparecem identificadas. Artigos só são listados se existirem no banco com `is_published=true`. Anúncios permanecem desligados até `ADSENSE_ENABLED=true` e um client ID válidos.
+
+```bash
+pytest
+```
+
+## Deploy no Render
+
+O arquivo `render.yaml` sobe o FastAPI (Docker) e um PostgreSQL na mesma região (Ohio). Não use Vercel nem Supabase para este stack.
+
+1. Envie o código para o GitHub (o Render lê o repositório).
+2. Em [render.com](https://render.com), crie a conta e conecte o GitHub.
+3. **New → Blueprint** e selecione o repositório CarreiraHub.
+4. Confirme o serviço `carreirahub` e o banco `carreirahub-db`.
+5. Preencha as variáveis com `sync: false` que o painel pedir (`CONTACT_EMAIL`, redes sociais, `APP_BASE_URL` se for usar domínio próprio).
+6. Aguarde o primeiro deploy. A URL pública será algo como `https://carreirahub.onrender.com`.
+7. Com domínio próprio: aponte o DNS no painel do Render e defina `APP_BASE_URL=https://seudominio.com` (canonical e Open Graph).
+
+O start do container roda `alembic upgrade head` e depois o Uvicorn. `SECRET_KEY` e `DATABASE_URL` são gerados/ligados pelo Blueprint.
+
+O plano `0.5c-512mb` permanece ligado (melhor para SEO). O plano `free` do Render dorme sem tráfego e não é adequado para um site público indexável.
+
+---
+
 # Portal de Carreiras
 
 > **Nome provisório do projeto.** Plataforma de vagas de emprego, currículos e ferramentas de carreira, construída para oferecer uma experiência rápida, acessível e otimizada para mecanismos de busca.

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ meta_title | default("CarreiraHub") }}</title>
+    <meta name="description" content="{{ meta_description | default('Conectando talentos a novas oportunidades.') }}">
+    <link rel="canonical" href="{{ canonical_url }}">
+    <meta name="robots" content="{{ robots | default('index,follow') }}">
+    <meta property="og:type" content="{{ og_type | default('website') }}">
+    <meta property="og:locale" content="pt_BR">
+    <meta property="og:site_name" content="{{ app_name }}">
+    <meta property="og:title" content="{{ meta_title | default(app_name) }}">
+    <meta property="og:description" content="{{ meta_description | default('Conectando talentos a novas oportunidades.') }}">
+    <meta property="og:url" content="{{ canonical_url }}">
+    <meta property="og:image" content="{{ base_url }}/static/images/og-cover.svg">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ meta_title | default(app_name) }}">
+    <meta name="twitter:description" content="{{ meta_description | default('Conectando talentos a novas oportunidades.') }}">
+    <meta name="twitter:image" content="{{ base_url }}/static/images/og-cover.svg">
+    <link rel="icon" href="/static/images/logo.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="/static/css/app.css">
+    {% if adsense_enabled %}
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client={{ adsense_client_id }}" crossorigin="anonymous"></script>
+    {% endif %}
+    {% block structured_data %}
+    <script type="application/ld+json">
+      {{ {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "name": app_name,
+            "url": base_url,
+            "logo": base_url ~ "/static/images/logo.svg",
+            "email": contact_email,
+            "description": "Conectando talentos a novas oportunidades."
+          },
+          {
+            "@type": "WebSite",
+            "name": app_name,
+            "url": base_url,
+            "inLanguage": "pt-BR",
+            "potentialAction": {
+              "@type": "SearchAction",
+              "target": base_url ~ "/vagas?q={search_term_string}",
+              "query-input": "required name=search_term_string"
+            }
+          }
+        ]
+      } | tojson }}
+    </script>
+    {% endblock %}
+  </head>
+  <body class="min-h-screen bg-white text-navy" x-data="{ navOpen: false }" @keydown.escape.window="navOpen = false">
+    <a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
+    {% include "components/header.html" %}
+    <main id="conteudo">
+      {% block content %}{% endblock %}
+    </main>
+    {% include "components/footer.html" %}
+    <script src="/static/js/htmx.min.js" defer></script>
+    <script src="/static/js/alpine.min.js" defer></script>
+  </body>
+</html>

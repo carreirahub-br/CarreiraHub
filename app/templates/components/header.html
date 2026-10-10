@@ -1,0 +1,56 @@
+{% from "components/icons.html" import svg %}
+<header class="sticky top-0 z-40 border-b border-slate-100 bg-white/95 backdrop-blur">
+  <div class="mx-auto flex max-w-shell items-center justify-between gap-4 px-4 py-3 lg:px-6">
+    <a href="/" class="flex shrink-0 items-center gap-2.5 rounded-lg" aria-label="CarreiraHub — página inicial">
+      <img src="/static/images/logo.svg" alt="" width="36" height="36">
+      <span class="text-lg font-extrabold tracking-tight">Carreira<span class="text-brand">Hub</span></span>
+    </a>
+
+    <nav class="hidden items-center gap-1 lg:flex" aria-label="Principal">
+      <a class="rounded-lg px-3 py-2 text-sm font-medium text-navy/80 hover:bg-canvas hover:text-navy {% if current_path.startswith('/vagas') %}bg-canvas text-navy{% endif %}" href="/vagas">Encontrar Vagas</a>
+      <a class="rounded-lg px-3 py-2 text-sm font-medium text-navy/80 hover:bg-canvas hover:text-navy" href="/curriculo">Criar Currículo</a>
+      <a class="rounded-lg px-3 py-2 text-sm font-medium text-navy/80 hover:bg-canvas hover:text-navy" href="/ferramentas">Ferramentas</a>
+      <a class="rounded-lg px-3 py-2 text-sm font-medium text-navy/80 hover:bg-canvas hover:text-navy" href="/blog">Blog</a>
+      <a class="rounded-lg px-3 py-2 text-sm font-medium text-navy/80 hover:bg-canvas hover:text-navy" href="/empresas">Para Empresas</a>
+    </nav>
+
+    <div class="hidden items-center gap-2 lg:flex">
+      <a class="btn-ghost" href="/entrar">Entrar</a>
+      <a class="btn-primary" href="/cadastrar">Cadastrar-se</a>
+    </div>
+
+    <button
+      type="button"
+      class="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 lg:hidden"
+      @click="navOpen = !navOpen"
+      :aria-expanded="navOpen.toString()"
+      aria-controls="menu-mobile"
+      aria-label="Abrir menu"
+    >
+      <span x-show="!navOpen">{{ svg("menu", "h-5 w-5") }}</span>
+      <span x-cloak x-show="navOpen">{{ svg("close", "h-5 w-5") }}</span>
+    </button>
+  </div>
+
+  <div
+    id="menu-mobile"
+    class="border-t border-slate-100 bg-white px-4 py-4 lg:hidden"
+    x-cloak
+    x-show="navOpen"
+    x-transition
+    role="navigation"
+    aria-label="Menu móvel"
+  >
+    <div class="flex flex-col gap-1">
+      <a class="rounded-lg px-3 py-3 text-sm font-medium" href="/vagas" @click="navOpen = false">Encontrar Vagas</a>
+      <a class="rounded-lg px-3 py-3 text-sm font-medium" href="/curriculo" @click="navOpen = false">Criar Currículo</a>
+      <a class="rounded-lg px-3 py-3 text-sm font-medium" href="/ferramentas" @click="navOpen = false">Ferramentas</a>
+      <a class="rounded-lg px-3 py-3 text-sm font-medium" href="/blog" @click="navOpen = false">Blog</a>
+      <a class="rounded-lg px-3 py-3 text-sm font-medium" href="/empresas" @click="navOpen = false">Para Empresas</a>
+    </div>
+    <div class="mt-4 flex flex-col gap-2">
+      <a class="btn-ghost w-full" href="/entrar">Entrar</a>
+      <a class="btn-primary w-full" href="/cadastrar">Cadastrar-se</a>
+    </div>
+  </div>
+</header>

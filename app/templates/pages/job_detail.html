@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block structured_data %}{% endblock %}
+
+{% block content %}
+<article class="mx-auto max-w-3xl px-4 py-12 lg:px-6">
+  {% if job.is_demo %}
+    <p class="mb-4 inline-flex rounded-full bg-canvas px-3 py-1 text-xs font-semibold uppercase tracking-wide text-muted">Demonstração</p>
+  {% endif %}
+  <h1 class="text-3xl font-extrabold tracking-tight">{{ job.title }}</h1>
+  <p class="mt-2 text-muted">{{ job.company_name }} · {{ job.location_label }} · {{ job.work_mode_label }} · {{ job.contract_type }}</p>
+  {% if job.salary_text %}
+    <p class="mt-2 text-sm">{{ job.salary_text }}</p>
+  {% endif %}
+  <div class="mt-8 rounded-card border border-slate-200 bg-canvas p-6 text-sm leading-6 text-muted">
+    <p>A descrição completa desta vaga ainda não está publicada. Dados estruturados <code>JobPosting</code> serão adicionados somente em páginas individuais elegíveis, com conteúdo completo e atualizado.</p>
+  </div>
+  <p class="mt-8"><a class="font-semibold text-brand hover:underline" href="/vagas">Voltar para as vagas</a></p>
+</article>
+{% endblock %}

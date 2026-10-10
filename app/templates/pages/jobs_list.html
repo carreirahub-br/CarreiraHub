@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% from "components/icons.html" import svg %}
+
+{% block content %}
+<section class="mx-auto max-w-shell px-4 py-12 lg:px-6">
+  <h1 class="text-3xl font-extrabold tracking-tight">Vagas de emprego</h1>
+  <p class="mt-2 text-sm text-muted">Use os filtros para refinar cargo, cidade e modalidade.</p>
+
+  <form class="mt-8 grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 md:grid-cols-[1fr_1fr_auto]" method="get" action="/vagas">
+    <div>
+      <label class="mb-1.5 block text-sm font-medium" for="q">Cargo ou empresa</label>
+      <input class="input" id="q" name="q" value="{{ q }}" type="search">
+    </div>
+    <div>
+      <label class="mb-1.5 block text-sm font-medium" for="cidade">Cidade ou região</label>
+      <input class="input" id="cidade" name="cidade" value="{{ cidade }}" type="text">
+    </div>
+    <div class="flex items-end gap-3">
+      <label class="mb-3 inline-flex items-center gap-2 text-sm">
+        <input type="checkbox" name="remoto" value="1" {% if remoto %}checked{% endif %}>
+        Remoto
+      </label>
+      <button class="btn-primary" type="submit">Filtrar</button>
+    </div>
+    {% if categoria %}
+      <input type="hidden" name="categoria" value="{{ categoria }}">
+    {% endif %}
+  </form>
+
+  {% if jobs_are_demo %}
+    <p class="mt-6 rounded-lg bg-canvas px-3 py-2 text-sm text-muted">Resultados de demonstração (ambiente de desenvolvimento).</p>
+  {% endif %}
+
+  {% if jobs %}
+    <div class="mt-8 grid gap-4 md:grid-cols-2">
+      {% for job in jobs %}
+        {% include "components/job_card.html" %}
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="mt-10 rounded-card border border-dashed border-slate-200 px-6 py-12 text-center">
+      <p class="font-semibold">Nenhuma vaga encontrada para estes filtros.</p>
+      <p class="mt-2 text-sm text-muted">Tente outro cargo, cidade ou remova o filtro de remoto.</p>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

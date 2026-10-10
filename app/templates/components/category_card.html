@@ -1,0 +1,17 @@
+{% from "components/icons.html" import svg %}
+<a
+  href="{{ category.path }}"
+  class="group flex items-center gap-4 rounded-card border border-slate-200 bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-brand/40 hover:shadow-card"
+>
+  <span class="flex h-11 w-11 items-center justify-center rounded-xl bg-canvas text-brand group-hover:bg-brand group-hover:text-white">
+    {{ svg(category.icon, "h-5 w-5") }}
+  </span>
+  <span>
+    <span class="block text-sm font-semibold">{{ category.name }}</span>
+    {% if category.active_jobs %}
+      <span class="mt-0.5 block text-xs text-muted">{{ category.active_jobs }} vaga{{ 's' if category.active_jobs != 1 else '' }} ativa{{ 's' if category.active_jobs != 1 else '' }}</span>
+    {% else %}
+      <span class="mt-0.5 block text-xs text-muted">Ver vagas</span>
+    {% endif %}
+  </span>
+</a>
