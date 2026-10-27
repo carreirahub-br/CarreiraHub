@@ -495,6 +495,8 @@ def save_scraped_jobs(
             existing.published_at = item["published_at"]
             if item.get("salary_text"):
                 existing.salary_text = item["salary_text"]
+            if item.get("external_url"):
+                existing.external_url = item["external_url"]
             if description:
                 existing.description = description
             existing.is_active = True
@@ -510,6 +512,7 @@ def save_scraped_jobs(
                 contract_type=item["contract_type"],
                 category_slug=item["category_slug"],
                 salary_text=item.get("salary_text", "A combinar"),
+                external_url=item.get("external_url", ""),
                 description=description,
                 is_active=True,
                 published_at=item["published_at"],

@@ -17,6 +17,7 @@ class JobCard:
     category_slug: str = ""
     is_demo: bool = False
     description: str = ""
+    external_url: str = ""
 
     @property
     def location_label(self) -> str:

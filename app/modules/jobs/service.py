@@ -41,6 +41,7 @@ def _to_card(job: Job, *, is_demo: bool = False) -> JobCard:
         category_slug=job.category_slug,
         is_demo=is_demo,
         description=job.description or "",
+        external_url=job.external_url or "",
     )
 
 
