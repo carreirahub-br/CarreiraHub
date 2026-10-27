@@ -39,6 +39,7 @@ def _to_card(job: Job, *, is_demo: bool = False) -> JobCard:
         published_at=job.published_at,
         category_slug=job.category_slug,
         is_demo=is_demo,
+        description=job.description or "",
     )
 
 

@@ -12,9 +12,16 @@
   {% if job.salary_text %}
     <p class="mt-2 text-sm">{{ job.salary_text }}</p>
   {% endif %}
+  {% if job.description %}
+  <div class="mt-8 rounded-card border border-slate-200 bg-white p-6 text-sm leading-relaxed text-slate-800 shadow-sm">
+    <h2 class="text-lg font-bold text-navy mb-4">Descrição da vaga</h2>
+    <div class="whitespace-pre-line text-slate-700">{{ job.description }}</div>
+  </div>
+  {% else %}
   <div class="mt-8 rounded-card border border-slate-200 bg-canvas p-6 text-sm leading-6 text-muted">
     <p>A descrição completa desta vaga ainda não está publicada. Dados estruturados <code>JobPosting</code> serão adicionados somente em páginas individuais elegíveis, com conteúdo completo e atualizado.</p>
   </div>
+  {% endif %}
   <p class="mt-8"><a class="font-semibold text-brand hover:underline" href="/vagas">Voltar para as vagas</a></p>
 </article>
 {% endblock %}

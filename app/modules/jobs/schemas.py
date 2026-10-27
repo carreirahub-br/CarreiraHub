@@ -16,6 +16,7 @@ class JobCard:
     published_at: datetime | None
     category_slug: str = ""
     is_demo: bool = False
+    description: str = ""
 
     @property
     def location_label(self) -> str:
