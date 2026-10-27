@@ -4,7 +4,7 @@ import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from bs4 import BeautifulSoup
@@ -21,13 +21,53 @@ USER_AGENT = (
     "Chrome/120.0.0.0 Safari/537.36"
 )
 
-BRAZIL_STATES = {
+# Mapeamento completo dos estados brasileiros (siglas e nomes por extenso)
+STATE_NAME_TO_UF = {
+    # Siglas
     "AC": "AC", "AL": "AL", "AP": "AP", "AM": "AM", "BA": "BA",
     "CE": "CE", "DF": "DF", "ES": "ES", "GO": "GO", "MA": "MA",
     "MT": "MT", "MS": "MS", "MG": "MG", "PA": "PA", "PB": "PB",
     "PR": "PR", "PE": "PE", "PI": "PI", "RJ": "RJ", "RN": "RN",
     "RS": "RS", "RO": "RO", "RR": "RR", "SC": "SC", "SP": "SP",
     "SE": "SE", "TO": "TO",
+    # Nomes em português
+    "acre": "AC", "alagoas": "AL", "amapa": "AP", "amapá": "AP",
+    "amazonas": "AM", "bahia": "BA", "ceara": "CE", "ceará": "CE",
+    "distrito federal": "DF", "federal district": "DF",
+    "espirito santo": "ES", "espírito santo": "ES",
+    "goias": "GO", "goiás": "GO", "maranhao": "MA", "maranhão": "MA",
+    "mato grosso": "MT", "mato grosso do sul": "MS", "minas gerais": "MG",
+    "para": "PA", "pará": "PA", "paraiba": "PB", "paraíba": "PB",
+    "parana": "PR", "paraná": "PR", "pernambuco": "PE", "piaui": "PI",
+    "piauí": "PI", "rio de janeiro": "RJ", "rio grande do norte": "RN",
+    "rio grande do sul": "RS", "rondonia": "RO", "rondônia": "RO",
+    "roraima": "RR", "santa catarina": "SC", "sao paulo": "SP",
+    "são paulo": "SP", "sergipe": "SE", "tocantins": "TO",
+}
+
+# Regiões metropolitanas mapeadas para cidade principal e UF
+METRO_REGIONS = {
+    "rio de janeiro": ("Rio de Janeiro", "RJ"),
+    "sao paulo": ("São Paulo", "SP"),
+    "são paulo": ("São Paulo", "SP"),
+    "belo horizonte": ("Belo Horizonte", "MG"),
+    "curitiba": ("Curitiba", "PR"),
+    "porto alegre": ("Porto Alegre", "RS"),
+    "recife": ("Recife", "PE"),
+    "salvador": ("Salvador", "BA"),
+    "fortaleza": ("Fortaleza", "CE"),
+    "brasilia": ("Brasília", "DF"),
+    "brasília": ("Brasília", "DF"),
+    "florianopolis": ("Florianópolis", "SC"),
+    "florianópolis": ("Florianópolis", "SC"),
+    "campinas": ("Campinas", "SP"),
+    "vitoria": ("Vitória", "ES"),
+    "vitória": ("Vitória", "ES"),
+    "goiania": ("Goiânia", "GO"),
+    "goiânia": ("Goiânia", "GO"),
+    "manaus": ("Manaus", "AM"),
+    "belem": ("Belém", "PA"),
+    "belém": ("Belém", "PA"),
 }
 
 CATEGORY_KEYWORDS = {
@@ -81,8 +121,44 @@ def slugify(text: str) -> str:
     return re.sub(r"[-\s]+", "-", cleaned)
 
 
+def clean_job_title(title: str) -> tuple[str, str | None]:
+    """
+    Higieniza o título da vaga removendo identificadores internos, referências e sufixos de modalidade.
+    Retorna (titulo_limpo, work_mode_hint).
+    Exemplos:
+      - 'Senior Backend Software Engineer – Python - Remote Work | REF#305510'
+        -> ('Senior Backend Software Engineer – Python', 'remote')
+      - 'Desenvolvedor Delphi SR (Curitiba-PR)'
+        -> ('Desenvolvedor Delphi SR', None)
+    """
+    work_mode_hint = None
+    if re.search(r"\b(remote|remoto|trabalho remoto)\b", title, re.IGNORECASE):
+        work_mode_hint = "remote"
+    elif re.search(r"\b(h[ií]brido|hybrid)\b", title, re.IGNORECASE):
+        work_mode_hint = "hybrid"
+
+    # Remove identificadores como | REF#12345 ou / REF 123
+    cleaned = re.sub(r"\s*[|/]\s*REF#?\s*\S+.*$", "", title, flags=re.IGNORECASE)
+    # Remove sufixos como '- Remote Work' ou '– Trabalho Remoto'
+    cleaned = re.sub(
+        r"\s*[-–—]\s*(?:Remote Work|Trabalho Remoto|100%\s*Remoto|Remoto|Remote).*$",
+        "",
+        cleaned,
+        flags=re.IGNORECASE,
+    )
+    # Remove parênteses como (Remoto) ou (Curitiba-PR)
+    cleaned = re.sub(
+        r"\s*\((?:Remote Work|Trabalho Remoto|100%\s*Remoto|Remoto|Remote|[A-Za-zÀ-ÿ\s]+-[A-Z]{2})\)",
+        "",
+        cleaned,
+        flags=re.IGNORECASE,
+    )
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    return cleaned or title, work_mode_hint
+
+
 def infer_category(title: str, description: str = "") -> str:
-    """Classifica a vaga em uma das categorias do CarreiraHub."""
+    """Classifica a vaga em uma das 8 categorias oficiais do CarreiraHub."""
     combined = f"{title} {description}".lower()
     for cat_slug, terms in CATEGORY_KEYWORDS.items():
         for term in terms:
@@ -91,18 +167,23 @@ def infer_category(title: str, description: str = "") -> str:
     return "tecnologia"
 
 
-def parse_location(location_raw: str, title: str = "") -> tuple[str, str, str]:
+def parse_location(
+    location_raw: str,
+    title: str = "",
+    work_mode_hint: str | None = None,
+) -> tuple[str, str, str]:
     """
-    Retorna (cidade, estado, work_mode).
-    work_mode: 'remote', 'hybrid', 'onsite'.
+    Interpreta a localização do LinkedIn e normaliza para o padrão do CarreiraHub.
+    Retorna (cidade, estado_uf, work_mode).
     """
     title_lower = title.lower()
     loc_lower = location_raw.lower()
 
-    # Detecta modalidade
-    if "remoto" in title_lower or "remote" in title_lower or "remoto" in loc_lower or "remote" in loc_lower:
+    if work_mode_hint:
+        work_mode = work_mode_hint
+    elif any(k in title_lower or k in loc_lower for k in ["remoto", "remote"]):
         work_mode = "remote"
-    elif "híbrido" in title_lower or "hibrido" in title_lower or "hybrid" in title_lower or "híbrido" in loc_lower:
+    elif any(k in title_lower or k in loc_lower for k in ["híbrido", "hibrido", "hybrid"]):
         work_mode = "hybrid"
     else:
         work_mode = "onsite"
@@ -110,26 +191,45 @@ def parse_location(location_raw: str, title: str = "") -> tuple[str, str, str]:
     city = ""
     state = ""
 
+    # Identifica regiões metropolitanas ("Greater Rio de Janeiro", "São Paulo e Região")
+    clean_loc = re.sub(r"^(?:greater|grande)\s+", "", loc_lower).strip()
+    clean_loc = re.sub(r"\s+e\s+regi[aã]o$", "", clean_loc).strip()
+    if clean_loc in METRO_REGIONS:
+        city, state = METRO_REGIONS[clean_loc]
+        return (city, state, work_mode)
+
     parts = [p.strip() for p in location_raw.split(",") if p.strip()]
     if parts:
-        # Se contiver apenas 'Brasil' ou 'Brazil'
-        if len(parts) == 1 and parts[0].lower() in {"brasil", "brazil", "trabalho remoto", "remote"}:
+        # Remove sufixo nacional
+        if parts[-1].lower() in {"brasil", "brazil"}:
+            parts.pop()
+
+        if not parts:
             if work_mode != "hybrid":
                 work_mode = "remote"
             return ("", "", work_mode)
 
-        # Ex: ['Curitiba', 'PR']
-        possible_uf = parts[-1].upper()
-        if possible_uf in BRAZIL_STATES:
-            state = possible_uf
+        if len(parts) == 1:
+            part_clean = parts[0].lower()
+            if part_clean in {"trabalho remoto", "remote", "brasil", "brazil"}:
+                return ("", "", "remote")
+            if part_clean in METRO_REGIONS:
+                c, s = METRO_REGIONS[part_clean]
+                return (c, s, work_mode)
             city = parts[0]
-        elif len(parts) >= 2 and parts[-2].upper() in BRAZIL_STATES:
-            state = parts[-2].upper()
+            return (city, "", work_mode)
+
+        # len(parts) >= 2 (Ex: ["Manaus", "Amazonas"] ou ["Curitiba", "PR"])
+        last_part = parts[-1]
+        last_lower = last_part.lower()
+        if last_part.upper() in STATE_NAME_TO_UF:
+            state = STATE_NAME_TO_UF[last_part.upper()]
+            city = parts[0]
+        elif last_lower in STATE_NAME_TO_UF:
+            state = STATE_NAME_TO_UF[last_lower]
             city = parts[0]
         else:
-            # Não encontrou sigla direta, define a primeira parte como cidade se não for 'Brasil'
-            if parts[0].lower() not in {"brasil", "brazil"}:
-                city = parts[0]
+            city = parts[0]
 
     return (city, state, work_mode)
 
@@ -145,28 +245,38 @@ def infer_contract_type(title: str, text: str = "") -> str:
     return "CLT"
 
 
-def parse_job_cards_html(html: str) -> list[dict[str, Any]]:
-    """Analisa o HTML retornado pelo endpoint de busca de vagas públicas do LinkedIn."""
+def parse_job_cards_html(
+    html: str,
+    max_days: int = 30,
+) -> list[dict[str, Any]]:
+    """
+    Analisa o HTML retornado pelo LinkedIn, aplicando limpeza de títulos,
+    normalização de localidades e filtro estrito dos últimos max_days (padrão 30 dias).
+    """
     soup = BeautifulSoup(html, "html.parser")
     cards = soup.find_all("div", class_="base-search-card")
     results = []
+    cutoff_date = datetime.now(UTC) - timedelta(days=max_days)
 
     for card in cards:
-        title_el = card.find("h3", class_="base-search-card__title")
+        raw_title_el = card.find("h3", class_="base-search-card__title")
         comp_el = card.find("h4", class_="base-search-card__subtitle")
         loc_el = card.find("span", class_="job-search-card__location")
         link_el = card.find("a", class_="base-card__full-link")
         time_el = card.find("time")
         urn = card.get("data-entity-urn", "")
 
-        title = title_el.get_text(strip=True) if title_el else ""
+        raw_title = raw_title_el.get_text(strip=True) if raw_title_el else ""
         company = comp_el.get_text(strip=True) if comp_el else ""
         location_raw = loc_el.get_text(strip=True) if loc_el else ""
         link = link_el.get("href") if link_el else ""
         if link:
-            # Remove parâmetros de rastreamento da URL do LinkedIn
             link = link.split("?")[0]
 
+        if not raw_title or not company:
+            continue
+
+        # Data de publicação
         pub_date_str = time_el.get("datetime") if time_el else ""
         published_at = None
         if pub_date_str:
@@ -177,6 +287,18 @@ def parse_job_cards_html(html: str) -> list[dict[str, Any]]:
         else:
             published_at = datetime.now(UTC)
 
+        # Filtro estrito: ignora vagas com mais de max_days
+        if published_at < cutoff_date:
+            continue
+
+        # Limpeza do título e inferência de modalidade
+        title, work_mode_hint = clean_job_title(raw_title)
+
+        # Normalização de localidade
+        city, state, work_mode = parse_location(location_raw, title, work_mode_hint)
+        category_slug = infer_category(title)
+        contract_type = infer_contract_type(title)
+
         # Extrai o ID numérico do LinkedIn
         linkedin_id = ""
         if "urn:li:jobPosting:" in urn:
@@ -185,13 +307,6 @@ def parse_job_cards_html(html: str) -> list[dict[str, Any]]:
             match = re.search(r"-(\d+)", link)
             if match:
                 linkedin_id = match.group(1)
-
-        if not title or not company:
-            continue
-
-        city, state, work_mode = parse_location(location_raw, title)
-        category_slug = infer_category(title)
-        contract_type = infer_contract_type(title)
 
         slug_base = f"{slugify(title)}-{slugify(company)}"
         if linkedin_id:
@@ -211,7 +326,7 @@ def parse_job_cards_html(html: str) -> list[dict[str, Any]]:
             "linkedin_id": linkedin_id,
             "external_url": link,
             "slug": slug,
-            "salary_text": None,
+            "salary_text": "A combinar",
             "description": "",
         })
 
@@ -219,25 +334,33 @@ def parse_job_cards_html(html: str) -> list[dict[str, Any]]:
 
 
 def fetch_linkedin_jobs(
-    keywords: str = "tecnologia",
+    keywords: str = "desenvolvedor",
     location: str = "Brasil",
     geo_id: str = "106057199",
     start: int = 0,
-    limit: int = 10,
+    limit: int | None = None,
+    max_days: int = 30,
     timeout: float = 12.0,
 ) -> list[dict[str, Any]]:
     """
-    Consome o endpoint público do LinkedIn sem necessidade de login.
-    Retorna uma lista de dados de vagas prontos para inserção.
+    Consome o endpoint público do LinkedIn aplicando filtro de tempo de até 30 dias (f_TPR=r2592000).
+    Pagina automaticamente até coletar todas as vagas disponíveis no período ou atingir o limite.
     """
     collected: list[dict[str, Any]] = []
+    seen_ids: set[str] = set()
     current_start = start
+    seconds = max_days * 86400
+    tpr_filter = f"r{seconds}"
 
-    while len(collected) < limit:
+    while True:
+        if limit is not None and len(collected) >= limit:
+            break
+
         params = {
             "keywords": keywords,
             "location": location,
             "geoId": geo_id,
+            "f_TPR": tpr_filter,
             "start": current_start,
         }
         query_str = urllib.parse.urlencode(params)
@@ -262,14 +385,23 @@ def fetch_linkedin_jobs(
             logger.error("Falha ao consultar LinkedIn: %s", e)
             break
 
-        cards = parse_job_cards_html(html)
+        cards = parse_job_cards_html(html, max_days=max_days)
         if not cards:
             break
 
+        new_items = 0
         for card in cards:
+            lid = card.get("linkedin_id") or card["slug"]
+            if lid in seen_ids:
+                continue
+            seen_ids.add(lid)
             collected.append(card)
-            if len(collected) >= limit:
+            new_items += 1
+            if limit is not None and len(collected) >= limit:
                 break
+
+        if new_items == 0:
+            break
 
         current_start += len(cards)
 
@@ -325,7 +457,6 @@ def save_scraped_jobs(
             description = fetch_job_description(item["linkedin_id"])
 
         if existing:
-            # Atualiza dados existentes mantendo a atividade
             existing.title = item["title"]
             existing.company_name = item["company_name"]
             existing.city = item["city"]
@@ -333,6 +464,9 @@ def save_scraped_jobs(
             existing.work_mode = item["work_mode"]
             existing.contract_type = item["contract_type"]
             existing.category_slug = item["category_slug"]
+            existing.published_at = item["published_at"]
+            if item.get("salary_text"):
+                existing.salary_text = item["salary_text"]
             if description:
                 existing.description = description
             existing.is_active = True
@@ -347,7 +481,7 @@ def save_scraped_jobs(
                 work_mode=item["work_mode"],
                 contract_type=item["contract_type"],
                 category_slug=item["category_slug"],
-                salary_text=item.get("salary_text"),
+                salary_text=item.get("salary_text", "A combinar"),
                 description=description,
                 is_active=True,
                 published_at=item["published_at"],
