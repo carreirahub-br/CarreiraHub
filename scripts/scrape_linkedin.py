@@ -51,14 +51,14 @@ def main():
     parser.add_argument(
         "--days",
         type=int,
-        default=30,
-        help="Janela máxima em dias para vagas em aberto (padrão: 30 dias).",
+        default=60,
+        help="Janela máxima em dias para vagas em aberto (padrão: 60 dias / 2 meses).",
     )
     parser.add_argument(
         "--limit",
         type=int,
-        default=30,
-        help="Quantidade de vagas a coletar (padrão: 30). Use 0 para puxar todas as encontradas.",
+        default=50,
+        help="Quantidade de vagas a coletar (padrão: 50). Use 0 para puxar todas as encontradas.",
     )
     parser.add_argument(
         "--all-categories",

@@ -16,10 +16,15 @@ def list_jobs(
     cidade: str = Query(default=""),
     remoto: str = Query(default=""),
     categoria: str = Query(default=""),
+    pagina: int = Query(default=1, ge=1),
+    por_pagina: int = Query(default=10, ge=1, le=100),
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ):
     remote_only = remoto in {"1", "true", "on", "sim"}
+    if por_pagina not in {10, 20, 50, 100}:
+        por_pagina = 10
+
     jobs = search_jobs(
         db,
         settings,
@@ -27,6 +32,8 @@ def list_jobs(
         city=cidade,
         remote_only=remote_only,
         category=categoria,
+        page=pagina,
+        per_page=por_pagina,
     )
     return templates.TemplateResponse(
         request,
@@ -37,6 +44,8 @@ def list_jobs(
             "cidade": cidade,
             "remoto": remote_only,
             "categoria": categoria,
+            "pagina": pagina,
+            "por_pagina": por_pagina,
             "jobs_are_demo": bool(jobs) and all(job.is_demo for job in jobs),
             "meta_title": "Vagas de emprego | CarreiraHub",
             "meta_description": "Pesquise vagas por cargo, cidade e modalidade. Filtre oportunidades remotas e por área de atuação.",

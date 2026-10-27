@@ -21,6 +21,19 @@ USER_AGENT = (
     "Chrome/120.0.0.0 Safari/537.36"
 )
 
+# Termos que indicam encerramento de candidatura
+CLOSED_JOB_MARKERS = [
+    "não aceita mais candidaturas",
+    "nao aceita mais candidaturas",
+    "candidaturas encerradas",
+    "no longer accepting applications",
+    "vaga encerrada",
+    "inscrições encerradas",
+    "inscricoes encerradas",
+    "closed-job",
+    "applications closed",
+]
+
 # Mapeamento completo dos estados brasileiros (siglas e nomes por extenso)
 STATE_NAME_TO_UF = {
     # Siglas
@@ -121,15 +134,24 @@ def slugify(text: str) -> str:
     return re.sub(r"[-\s]+", "-", cleaned)
 
 
+def is_job_card_accepting(card_el: BeautifulSoup) -> bool:
+    """Verifica se o card de vaga ainda está aberto e aceitando candidaturas."""
+    classes = " ".join(card_el.get("class", []))
+    if "closed" in classes.lower():
+        return False
+
+    full_text = card_el.get_text(" ", strip=True).lower()
+    for marker in CLOSED_JOB_MARKERS:
+        if marker in full_text:
+            return False
+
+    return True
+
+
 def clean_job_title(title: str) -> tuple[str, str | None]:
     """
     Higieniza o título da vaga removendo identificadores internos, referências e sufixos de modalidade.
     Retorna (titulo_limpo, work_mode_hint).
-    Exemplos:
-      - 'Senior Backend Software Engineer – Python - Remote Work | REF#305510'
-        -> ('Senior Backend Software Engineer – Python', 'remote')
-      - 'Desenvolvedor Delphi SR (Curitiba-PR)'
-        -> ('Desenvolvedor Delphi SR', None)
     """
     work_mode_hint = None
     if re.search(r"\b(remote|remoto|trabalho remoto)\b", title, re.IGNORECASE):
@@ -137,16 +159,13 @@ def clean_job_title(title: str) -> tuple[str, str | None]:
     elif re.search(r"\b(h[ií]brido|hybrid)\b", title, re.IGNORECASE):
         work_mode_hint = "hybrid"
 
-    # Remove identificadores como | REF#12345 ou / REF 123
     cleaned = re.sub(r"\s*[|/]\s*REF#?\s*\S+.*$", "", title, flags=re.IGNORECASE)
-    # Remove sufixos como '- Remote Work' ou '– Trabalho Remoto'
     cleaned = re.sub(
         r"\s*[-–—]\s*(?:Remote Work|Trabalho Remoto|100%\s*Remoto|Remoto|Remote).*$",
         "",
         cleaned,
         flags=re.IGNORECASE,
     )
-    # Remove parênteses como (Remoto) ou (Curitiba-PR)
     cleaned = re.sub(
         r"\s*\((?:Remote Work|Trabalho Remoto|100%\s*Remoto|Remoto|Remote|[A-Za-zÀ-ÿ\s]+-[A-Z]{2})\)",
         "",
@@ -191,7 +210,6 @@ def parse_location(
     city = ""
     state = ""
 
-    # Identifica regiões metropolitanas ("Greater Rio de Janeiro", "São Paulo e Região")
     clean_loc = re.sub(r"^(?:greater|grande)\s+", "", loc_lower).strip()
     clean_loc = re.sub(r"\s+e\s+regi[aã]o$", "", clean_loc).strip()
     if clean_loc in METRO_REGIONS:
@@ -200,7 +218,6 @@ def parse_location(
 
     parts = [p.strip() for p in location_raw.split(",") if p.strip()]
     if parts:
-        # Remove sufixo nacional
         if parts[-1].lower() in {"brasil", "brazil"}:
             parts.pop()
 
@@ -219,7 +236,6 @@ def parse_location(
             city = parts[0]
             return (city, "", work_mode)
 
-        # len(parts) >= 2 (Ex: ["Manaus", "Amazonas"] ou ["Curitiba", "PR"])
         last_part = parts[-1]
         last_lower = last_part.lower()
         if last_part.upper() in STATE_NAME_TO_UF:
@@ -247,11 +263,12 @@ def infer_contract_type(title: str, text: str = "") -> str:
 
 def parse_job_cards_html(
     html: str,
-    max_days: int = 30,
+    max_days: int = 60,
 ) -> list[dict[str, Any]]:
     """
     Analisa o HTML retornado pelo LinkedIn, aplicando limpeza de títulos,
-    normalização de localidades e filtro estrito dos últimos max_days (padrão 30 dias).
+    normalização de localidades e filtro estrito dos últimos max_days (padrão 60 dias / 2 meses).
+    Garante que a vaga esteja aberta e aceitando candidaturas.
     """
     soup = BeautifulSoup(html, "html.parser")
     cards = soup.find_all("div", class_="base-search-card")
@@ -259,6 +276,10 @@ def parse_job_cards_html(
     cutoff_date = datetime.now(UTC) - timedelta(days=max_days)
 
     for card in cards:
+        # Garante que a vaga está aberta e aceitando candidaturas
+        if not is_job_card_accepting(card):
+            continue
+
         raw_title_el = card.find("h3", class_="base-search-card__title")
         comp_el = card.find("h4", class_="base-search-card__subtitle")
         loc_el = card.find("span", class_="job-search-card__location")
@@ -276,7 +297,6 @@ def parse_job_cards_html(
         if not raw_title or not company:
             continue
 
-        # Data de publicação
         pub_date_str = time_el.get("datetime") if time_el else ""
         published_at = None
         if pub_date_str:
@@ -287,19 +307,15 @@ def parse_job_cards_html(
         else:
             published_at = datetime.now(UTC)
 
-        # Filtro estrito: ignora vagas com mais de max_days
+        # Filtro estrito: ignora vagas anteriores a max_days (ex: 60 dias)
         if published_at < cutoff_date:
             continue
 
-        # Limpeza do título e inferência de modalidade
         title, work_mode_hint = clean_job_title(raw_title)
-
-        # Normalização de localidade
         city, state, work_mode = parse_location(location_raw, title, work_mode_hint)
         category_slug = infer_category(title)
         contract_type = infer_contract_type(title)
 
-        # Extrai o ID numérico do LinkedIn
         linkedin_id = ""
         if "urn:li:jobPosting:" in urn:
             linkedin_id = urn.split("urn:li:jobPosting:")[-1]
@@ -339,12 +355,12 @@ def fetch_linkedin_jobs(
     geo_id: str = "106057199",
     start: int = 0,
     limit: int | None = None,
-    max_days: int = 30,
+    max_days: int = 60,
     timeout: float = 12.0,
 ) -> list[dict[str, Any]]:
     """
-    Consome o endpoint público do LinkedIn aplicando filtro de tempo de até 30 dias (f_TPR=r2592000).
-    Pagina automaticamente até coletar todas as vagas disponíveis no período ou atingir o limite.
+    Consome o endpoint público do LinkedIn aplicando filtro de tempo de até 60 dias (f_TPR=r5184000).
+    Pagina automaticamente até coletar todas as vagas abertas disponíveis no período ou atingir o limite.
     """
     collected: list[dict[str, Any]] = []
     seen_ids: set[str] = set()
@@ -408,10 +424,13 @@ def fetch_linkedin_jobs(
     return collected
 
 
-def fetch_job_description(linkedin_id: str, timeout: float = 10.0) -> str:
-    """Busca a descrição completa da vaga através do endpoint de detalhe público."""
+def fetch_job_description(linkedin_id: str, timeout: float = 10.0) -> tuple[str, bool]:
+    """
+    Busca a descrição completa da vaga através do endpoint de detalhe público.
+    Retorna (descricao, is_open). Se a vaga foi encerrada no meio tempo, is_open será False.
+    """
     if not linkedin_id:
-        return ""
+        return ("", True)
 
     url = f"https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{linkedin_id}"
     req = urllib.request.Request(
@@ -427,14 +446,19 @@ def fetch_job_description(linkedin_id: str, timeout: float = 10.0) -> str:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             if resp.status == 200:
                 html = resp.read().decode("utf-8", errors="replace")
+                html_lower = html.lower()
+                for marker in CLOSED_JOB_MARKERS:
+                    if marker in html_lower:
+                        return ("", False)
+
                 soup = BeautifulSoup(html, "html.parser")
                 desc_el = soup.find("div", class_="show-more-less-html__markup")
                 if desc_el:
-                    return desc_el.get_text(separator="\n", strip=True)
+                    return (desc_el.get_text(separator="\n", strip=True), True)
     except (urllib.error.URLError, TimeoutError, OSError) as e:
         logger.debug("Não foi possível buscar a descrição completa da vaga %s: %s", linkedin_id, e)
 
-    return ""
+    return ("", True)
 
 
 def save_scraped_jobs(
@@ -444,7 +468,7 @@ def save_scraped_jobs(
 ) -> list[Job]:
     """
     Insere ou atualiza as vagas no banco de dados.
-    Os registros ficam disponíveis imediatamente no módulo 'Encontrar Vagas'.
+    Verifica se a vaga continua aberta antes de confirmar.
     """
     saved_jobs: list[Job] = []
 
@@ -454,7 +478,11 @@ def save_scraped_jobs(
 
         description = item.get("description", "")
         if fetch_descriptions and not description and item.get("linkedin_id"):
-            description = fetch_job_description(item["linkedin_id"])
+            description, is_open = fetch_job_description(item["linkedin_id"])
+            if not is_open:
+                if existing:
+                    existing.is_active = False
+                continue
 
         if existing:
             existing.title = item["title"]

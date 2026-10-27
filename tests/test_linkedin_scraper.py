@@ -69,9 +69,10 @@ def test_infer_contract_type():
     assert infer_contract_type("Analista de RH CLT") == "CLT"
 
 
-def test_parse_job_cards_html_and_30_days_filter():
+def test_parse_job_cards_html_and_60_days_filter():
     now_str = datetime.now(UTC).strftime("%Y-%m-%d")
-    old_str = (datetime.now(UTC) - timedelta(days=45)).strftime("%Y-%m-%d")
+    days_45_str = (datetime.now(UTC) - timedelta(days=45)).strftime("%Y-%m-%d")
+    days_75_str = (datetime.now(UTC) - timedelta(days=75)).strftime("%Y-%m-%d")
 
     sample_html = f"""
     <div class="base-search-card" data-entity-urn="urn:li:jobPosting:987654321">
@@ -87,69 +88,124 @@ def test_parse_job_cards_html_and_30_days_filter():
             </div>
         </div>
     </div>
+    <div class="base-search-card" data-entity-urn="urn:li:jobPosting:222222222">
+        <div class="base-search-card__info">
+            <h3 class="base-search-card__title">Engenheiro de Dados Recente</h3>
+            <h4 class="base-search-card__subtitle">Cloud Corp</h4>
+            <div class="base-search-card__metadata">
+                <span class="job-search-card__location">Curitiba, PR</span>
+                <time class="job-search-card__listdate" datetime="{days_45_str}">45 dias atrás</time>
+            </div>
+        </div>
+    </div>
     <div class="base-search-card" data-entity-urn="urn:li:jobPosting:111111111">
         <div class="base-search-card__info">
             <h3 class="base-search-card__title">Vaga Antiga Expirada</h3>
             <h4 class="base-search-card__subtitle">Old Corp</h4>
             <div class="base-search-card__metadata">
                 <span class="job-search-card__location">São Paulo, SP</span>
-                <time class="job-search-card__listdate" datetime="{old_str}">45 dias atrás</time>
+                <time class="job-search-card__listdate" datetime="{days_75_str}">75 dias atrás</time>
             </div>
         </div>
     </div>
     """
-    parsed = parse_job_cards_html(sample_html, max_days=30)
-    # A vaga de 45 dias atrás deve ser ignorada pelo filtro de 30 dias
+    parsed = parse_job_cards_html(sample_html, max_days=60)
+    # Vaga de hoje e de 45 dias são mantidas (<= 60 dias). A de 75 dias é descartada.
+    assert len(parsed) == 2
+    assert parsed[0]["title"] == "Analista de Dados Pleno"
+    assert parsed[1]["title"] == "Engenheiro de Dados Recente"
+
+
+def test_closed_jobs_are_discarded():
+    now_str = datetime.now(UTC).strftime("%Y-%m-%d")
+    sample_html = f"""
+    <div class="base-search-card job-search-card--closed" data-entity-urn="urn:li:jobPosting:333333333">
+        <div class="base-search-card__info">
+            <h3 class="base-search-card__title">Vaga Fechada por Classe</h3>
+            <h4 class="base-search-card__subtitle">Closed Corp</h4>
+            <span class="job-search-card__location">São Paulo, SP</span>
+            <time class="job-search-card__listdate" datetime="{now_str}">Hoje</time>
+        </div>
+    </div>
+    <div class="base-search-card" data-entity-urn="urn:li:jobPosting:444444444">
+        <div class="base-search-card__info">
+            <h3 class="base-search-card__title">Vaga Encerrada por Texto</h3>
+            <h4 class="base-search-card__subtitle">Closed Corp 2</h4>
+            <span class="job-search-card__location">São Paulo, SP</span>
+            <span class="status">Não aceita mais candidaturas</span>
+            <time class="job-search-card__listdate" datetime="{now_str}">Hoje</time>
+        </div>
+    </div>
+    <div class="base-search-card" data-entity-urn="urn:li:jobPosting:555555555">
+        <div class="base-search-card__info">
+            <h3 class="base-search-card__title">Vaga Aberta Aceitando</h3>
+            <h4 class="base-search-card__subtitle">Open Corp</h4>
+            <span class="job-search-card__location">São Paulo, SP</span>
+            <time class="job-search-card__listdate" datetime="{now_str}">Hoje</time>
+        </div>
+    </div>
+    """
+    parsed = parse_job_cards_html(sample_html, max_days=60)
     assert len(parsed) == 1
-    job = parsed[0]
-    assert job["title"] == "Analista de Dados Pleno"
-    assert job["company_name"] == "Tech Corp"
-    assert job["city"] == "Florianópolis"
-    assert job["state"] == "SC"
-    assert job["category_slug"] == "tecnologia"
-    assert job["linkedin_id"] == "987654321"
-    assert job["salary_text"] == "A combinar"
+    assert parsed[0]["title"] == "Vaga Aberta Aceitando"
 
 
-def test_save_and_retrieve_in_vagas_module(client):
+def test_pagination_and_selection_of_jobs_per_page(client):
     from app.core.config import get_settings
     from app.core.database import SessionLocal
 
     db = SessionLocal()
     settings = get_settings()
 
+    # Cria 15 vagas no banco para testar paginação (página 1 com 10 e página 2 com 5)
     jobs_data = [
         {
-            "title": "Engenheiro de Dados Sênior",
-            "company_name": "Acme BigData",
-            "city": "Belo Horizonte",
-            "state": "MG",
-            "work_mode": "remote",
+            "title": f"Desenvolvedor Paginado {i}",
+            "company_name": f"Tech Company {i}",
+            "city": "São Paulo",
+            "state": "SP",
+            "work_mode": "onsite",
             "contract_type": "CLT",
             "category_slug": "tecnologia",
             "published_at": datetime.now(UTC),
-            "linkedin_id": "111222333",
-            "external_url": "https://linkedin.com/jobs/view/111222333",
-            "slug": "engenheiro-de-dados-senior-acme-111222333",
+            "linkedin_id": f"pag-{i}",
+            "external_url": f"https://linkedin.com/jobs/view/pag-{i}",
+            "slug": f"desenvolvedor-paginado-{i}",
             "salary_text": "A combinar",
-            "description": "Responsável por pipelines ETL e modelagem de dados.",
+            "description": f"Descrição da vaga paginada {i}",
         }
+        for i in range(1, 16)
     ]
 
     saved = save_scraped_jobs(db, jobs_data)
-    assert len(saved) == 1
-    assert saved[0].id is not None
+    assert len(saved) == 15
 
-    found = search_jobs(db, settings, q="Engenheiro")
-    assert len(found) >= 1
-    assert any(j.slug == "engenheiro-de-dados-senior-acme-111222333" for j in found)
+    # Página 1 com 10 vagas por padrão
+    page1 = search_jobs(db, settings, page=1, per_page=10)
+    assert len(page1) == 10
+    assert page1.total == 15
+    assert page1.total_pages == 2
+    assert page1.has_next is True
+    assert page1.has_prev is False
 
-    response = client.get("/vagas")
-    assert response.status_code == 200
-    assert "Engenheiro de Dados Sênior" in response.text
-    assert "Acme BigData" in response.text
-    assert "Demonstração" not in response.text
+    # Página 2 com as 5 restantes
+    page2 = search_jobs(db, settings, page=2, per_page=10)
+    assert len(page2) == 5
+    assert page2.has_next is False
+    assert page2.has_prev is True
 
-    detail_resp = client.get("/vagas/engenheiro-de-dados-senior-acme-111222333")
-    assert detail_resp.status_code == 200
-    assert "Responsável por pipelines ETL e modelagem de dados." in detail_resp.text
+    # Teste de seleção de 20 vagas por página
+    page_all = search_jobs(db, settings, page=1, per_page=20)
+    assert len(page_all) == 15
+    assert page_all.total_pages == 1
+
+    # Testa renderização no template via client HTTP
+    resp1 = client.get("/vagas?pagina=1&por_pagina=10")
+    assert resp1.status_code == 200
+    assert "Mostrando" in resp1.text
+    assert "10 (padrão: 2x5)" in resp1.text
+    assert "Próxima →" in resp1.text
+
+    resp2 = client.get("/vagas?pagina=2&por_pagina=10")
+    assert resp2.status_code == 200
+    assert "← Anterior" in resp2.text

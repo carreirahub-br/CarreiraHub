@@ -1,11 +1,12 @@
-from datetime import datetime, timedelta, timezone
+import math
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
 from app.modules.jobs.models import Job
-from app.modules.jobs.schemas import JobCard
+from app.modules.jobs.schemas import JobCard, PaginatedJobs
 
 WORK_MODE_LABELS = {
     "remote": "Remoto",
@@ -44,7 +45,7 @@ def _to_card(job: Job, *, is_demo: bool = False) -> JobCard:
 
 
 def _demo_jobs() -> list[JobCard]:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     samples = [
         ("analista-dados-remoto-demo", "Analista de Dados", "Empresa demonstração", "São Paulo", "SP", "remote", "CLT", "tecnologia", "A combinar", 1),
         ("assistente-administrativo-demo", "Assistente Administrativo", "Empresa demonstração", "Belo Horizonte", "MG", "hybrid", "CLT", "administracao", None, 2),
@@ -99,25 +100,55 @@ def search_jobs(
     city: str = "",
     remote_only: bool = False,
     category: str = "",
-    limit: int = 20,
-) -> list[JobCard]:
+    page: int = 1,
+    per_page: int = 10,
+    limit: int | None = None,
+) -> PaginatedJobs:
+    actual_per_page = limit if limit is not None else per_page
+    actual_page = max(1, page)
+    offset = (actual_page - 1) * actual_per_page
+
     try:
         stmt = select(Job).where(Job.is_active.is_(True))
+        count_stmt = select(func.count(Job.id)).where(Job.is_active.is_(True))
+
         if q:
             like = f"%{q.strip()}%"
-            stmt = stmt.where((Job.title.ilike(like)) | (Job.company_name.ilike(like)))
+            filter_q = (Job.title.ilike(like)) | (Job.company_name.ilike(like))
+            stmt = stmt.where(filter_q)
+            count_stmt = count_stmt.where(filter_q)
         if city:
             like_city = f"%{city.strip()}%"
-            stmt = stmt.where((Job.city.ilike(like_city)) | (Job.state.ilike(like_city)))
+            filter_city = (Job.city.ilike(like_city)) | (Job.state.ilike(like_city))
+            stmt = stmt.where(filter_city)
+            count_stmt = count_stmt.where(filter_city)
         if remote_only:
             stmt = stmt.where(Job.work_mode == "remote")
+            count_stmt = count_stmt.where(Job.work_mode == "remote")
         if category:
             stmt = stmt.where(Job.category_slug == category)
-        rows = db.scalars(stmt.order_by(Job.published_at.desc().nullslast()).limit(limit)).all()
+            count_stmt = count_stmt.where(Job.category_slug == category)
+
+        total = db.scalar(count_stmt) or 0
+        rows = db.scalars(
+            stmt.order_by(Job.published_at.desc().nullslast(), Job.id.desc())
+            .offset(offset)
+            .limit(actual_per_page)
+        ).all()
     except Exception:
+        total = 0
         rows = []
-    if rows:
-        return [_to_card(job) for job in rows]
+
+    if total > 0 or rows:
+        total_pages = max(1, math.ceil(total / actual_per_page))
+        return PaginatedJobs(
+            items=[_to_card(job) for job in rows],
+            total=total,
+            page=actual_page,
+            per_page=actual_per_page,
+            total_pages=total_pages,
+        )
+
     if settings.is_development:
         jobs = _demo_jobs()
         query = q.lower().strip()
@@ -133,8 +164,19 @@ def search_jobs(
             if category and job.category_slug != category:
                 continue
             filtered.append(job)
-        return filtered[:limit]
-    return []
+
+        total_demo = len(filtered)
+        paged_items = filtered[offset : offset + actual_per_page]
+        total_pages = max(1, math.ceil(total_demo / actual_per_page))
+        return PaginatedJobs(
+            items=paged_items,
+            total=total_demo,
+            page=actual_page,
+            per_page=actual_per_page,
+            total_pages=total_pages,
+        )
+
+    return PaginatedJobs(items=[], total=0, page=actual_page, per_page=actual_per_page, total_pages=1)
 
 
 def category_counts(db: Session) -> dict[str, int]:
