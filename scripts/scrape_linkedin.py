@@ -11,7 +11,7 @@ from pathlib import Path
 # Adiciona o diretório raiz ao PYTHONPATH
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.core.database import SessionLocal
+from app.core.database import BackupSessionLocal, SessionLocal
 from app.modules.jobs.scraper import fetch_linkedin_jobs, save_scraped_jobs
 
 CATEGORY_DEFAULT_KEYWORDS = {
@@ -83,6 +83,7 @@ def main():
     print("=" * 65)
 
     db = SessionLocal()
+    backup_db = BackupSessionLocal() if BackupSessionLocal is not None else None
     total_saved = 0
 
     try:
@@ -108,13 +109,24 @@ def main():
                 print(f"   ⚠️ Nenhuma vaga recente encontrada para '{kw}'.")
                 continue
 
-            print(f"   📦 {len(jobs_data)} vagas válidas nos últimos {args.days} dias. Salvando...")
+            print(f"   📦 {len(jobs_data)} vagas válidas nos últimos {args.days} dias. Salvando no Neon...")
             saved = save_scraped_jobs(
                 db=db,
                 jobs_data=jobs_data,
                 fetch_descriptions=args.with_description,
             )
             total_saved += len(saved)
+
+            if backup_db is not None:
+                try:
+                    save_scraped_jobs(
+                        db=backup_db,
+                        jobs_data=jobs_data,
+                        fetch_descriptions=False,
+                    )
+                    print(f"   🔄 Réplica espelhada no Supabase (Backup) com sucesso!")
+                except Exception as e:
+                    print(f"   ⚠️ Falha ao espelhar réplica no Supabase: {e}")
 
             for i, j in enumerate(saved, 1):
                 loc = f"{j.city} / {j.state}" if j.city and j.state else (j.city or "Remoto")
@@ -129,6 +141,8 @@ def main():
 
     finally:
         db.close()
+        if backup_db is not None:
+            backup_db.close()
 
 
 if __name__ == "__main__":

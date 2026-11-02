@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     render_external_url: str = Field(default="")
     secret_key: str = "dev-only-change-me"
     database_url: str = "sqlite+pysqlite:///./carreirahub.db"
+    database_backup_url: str = ""
     auto_create_tables: bool = True
     adsense_enabled: bool = False
     adsense_client_id: str = ""
@@ -32,10 +33,10 @@ class Settings(BaseSettings):
     social_youtube_url: str = ""
     contact_email: str = "contato@carreirahub.com.br"
 
-    @field_validator("database_url", mode="before")
+    @field_validator("database_url", "database_backup_url", mode="before")
     @classmethod
     def _database_url(cls, value: str) -> str:
-        return normalize_database_url(value) if isinstance(value, str) else value
+        return normalize_database_url(value) if isinstance(value, str) and value.strip() else value
 
     @property
     def is_development(self) -> bool:
