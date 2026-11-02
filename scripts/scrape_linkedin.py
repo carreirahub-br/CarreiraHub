@@ -12,7 +12,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.core.database import BackupSessionLocal, SessionLocal
-from app.modules.jobs.scraper import fetch_linkedin_jobs, save_scraped_jobs
+from app.modules.jobs.scraper import (
+    check_and_deactivate_closed_jobs,
+    fetch_linkedin_jobs,
+    save_scraped_jobs,
+)
 
 CATEGORY_DEFAULT_KEYWORDS = {
     "tecnologia": "desenvolvedor",
@@ -71,6 +75,12 @@ def main():
         help="Se ativado, consulta a descrição detalhada de cada vaga no endpoint de detalhes.",
     )
 
+    parser.add_argument(
+        "--clean-closed",
+        action="store_true",
+        help="Verifica e desativa vagas fechadas/expiradas no banco de dados.",
+    )
+
     args = parser.parse_args()
     limit = None if args.limit <= 0 else args.limit
 
@@ -80,6 +90,7 @@ def main():
     print(f"⏳ Janela de tempo: até {args.days} dias")
     print(f"🎯 Limite por busca: {limit or 'Todas as disponíveis'}")
     print(f"📝 Descrições completas: {'Sim' if args.with_description else 'Não'}")
+    print(f"🧹 Limpar vagas fechadas: {'Sim' if args.clean_closed else 'Não'}")
     print("=" * 65)
 
     db = SessionLocal()
@@ -87,6 +98,15 @@ def main():
     total_saved = 0
 
     try:
+        # Se solicitado, executa a verificação e desativação de vagas encerradas
+        if args.clean_closed:
+            print("\n🧹 Verificando e limpando vagas encerradas ou com mais de 60 dias...")
+            deactivated = check_and_deactivate_closed_jobs(
+                db=db,
+                backup_db=backup_db,
+                batch_size=100,
+            )
+            print(f"   ✅ {deactivated} vaga(s) encerrada(s) foram desativadas do site com sucesso!\n")
         queries = []
         if args.all_categories:
             print("🌐 Modo Todas as Categorias ativado (8 categorias do portal)...\n")

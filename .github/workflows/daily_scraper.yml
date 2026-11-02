@@ -1,0 +1,35 @@
+name: Atualização Diária de Vagas (Scraper LinkedIn)
+
+on:
+  schedule:
+    # Roda todos os dias às 06:00 UTC (03:00 Horário de Brasília)
+    - cron: '0 6 * * *'
+  # Permite disparar manualmente pela aba "Actions" no GitHub a qualquer momento
+  workflow_dispatch:
+
+jobs:
+  scrape-and-update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar código do repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: 'pip'
+
+      - name: Instalar dependências
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Executar Scraper e Limpeza de Vagas Fechadas
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_BACKUP_URL: ${{ secrets.DATABASE_BACKUP_URL }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY || 'github-actions-secret-key-temporary' }}
+          AUTO_CREATE_TABLES: 'false'
+        run: |
+          python scripts/scrape_linkedin.py --all-categories --days 60 --limit 30 --clean-closed

@@ -525,3 +525,75 @@ def save_scraped_jobs(
         db.refresh(j)
 
     return saved_jobs
+
+
+def check_and_deactivate_closed_jobs(
+    db: Session,
+    backup_db: Session | None = None,
+    batch_size: int = 50,
+) -> int:
+    """
+    Verifica vagas ativas no banco de dados e desativa (is_active = False)
+    aquelas que já foram encerradas no LinkedIn ou que passaram de 60 dias.
+    Replica a desativação no banco de backup se fornecido.
+    Retorna o total de vagas desativadas.
+    """
+    cutoff_date = datetime.now(UTC) - timedelta(days=60)
+    deactivated_count = 0
+
+    # 1. Desativa automaticamente vagas com mais de 60 dias
+    old_jobs = db.scalars(
+        select(Job).where(Job.is_active.is_(True), Job.published_at < cutoff_date)
+    ).all()
+    for job in old_jobs:
+        job.is_active = False
+        deactivated_count += 1
+        logger.info("Vaga expirada (>60 dias) desativada: %s", job.slug)
+
+    # 2. Verifica status no LinkedIn para as vagas ativas restantes
+    active_jobs = db.scalars(
+        select(Job)
+        .where(Job.is_active.is_(True))
+        .order_by(Job.published_at.asc())
+        .limit(batch_size)
+    ).all()
+
+    for job in active_jobs:
+        linkedin_id = ""
+        if job.external_url and "/view/" in job.external_url:
+            match = re.search(r"/view/(\d+)", job.external_url)
+            if match:
+                linkedin_id = match.group(1)
+        if not linkedin_id:
+            match = re.search(r"-(\d{8,})$", job.slug)
+            if match:
+                linkedin_id = match.group(1)
+
+        if linkedin_id:
+            _, is_open = fetch_job_description(linkedin_id, timeout=8.0)
+            if not is_open:
+                job.is_active = False
+                deactivated_count += 1
+                logger.info("Vaga encerrada no LinkedIn desativada: %s", job.title)
+
+    db.commit()
+
+    # 3. Sincroniza a desativação no Supabase se houver
+    if backup_db is not None and deactivated_count > 0:
+        try:
+            deactivated_slugs = [j.slug for j in old_jobs] + [
+                j.slug for j in active_jobs if not j.is_active
+            ]
+            if deactivated_slugs:
+                backup_jobs = backup_db.scalars(
+                    select(Job).where(Job.slug.in_(deactivated_slugs))
+                ).all()
+                for bj in backup_jobs:
+                    bj.is_active = False
+                backup_db.commit()
+                logger.info("Desativações replicadas no Supabase com sucesso.")
+        except Exception as e:
+            logger.warning("Falha ao replicar desativações no banco de backup: %s", e)
+
+    return deactivated_count
+
